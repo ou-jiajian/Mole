@@ -46,7 +46,7 @@ clean_dev_npm() {
 
     # These residual directories are not removed by `npm cache clean --force`
     local -a npm_residual_dirs=("_cacache" "_npx" "_logs" "_prebuilds")
-    local -a npm_descriptions=("npm cache directory" "npm npx cache" "npm logs" "npm prebuilds")
+    local -a npm_descriptions=("npm cache directory (npm 缓存目录)" "npm npx cache (npm npx 缓存)" "npm logs (npm 日志)" "npm prebuilds (npm 预构建)")
 
     # Clean default npm cache path
     local i
@@ -67,7 +67,7 @@ clean_dev_npm() {
     # Clean custom npm cache path (if different from default)
     if [[ "$npm_cache_path_normalized" != "$npm_default_cache_normalized" ]]; then
         for i in "${!npm_residual_dirs[@]}"; do
-            safe_clean "$npm_cache_path/${npm_residual_dirs[$i]}"/* "${npm_descriptions[$i]} (custom path)"
+            safe_clean "$npm_cache_path/${npm_residual_dirs[$i]}"/* "${npm_descriptions[$i]} (自定义路径)"
         done
     fi
 
@@ -81,17 +81,17 @@ clean_dev_npm() {
         pnpm_store_path=$(COREPACK_ENABLE_DOWNLOAD_PROMPT=0 run_with_timeout 2 pnpm store path 2> /dev/null) || pnpm_store_path=""
         stop_section_spinner
         if [[ -n "$pnpm_store_path" && "$pnpm_store_path" != "$pnpm_default_store" ]]; then
-            safe_clean "$pnpm_default_store"/* "Orphaned pnpm store"
+            safe_clean "$pnpm_default_store"/* "Orphaned pnpm store (孤儿 pnpm 存储)"
         fi
     else
         # pnpm not installed or not usable, just clean the default store directory
-        safe_clean "$pnpm_default_store"/* "pnpm store"
+        safe_clean "$pnpm_default_store"/* "pnpm store (pnpm 存储)"
     fi
     note_activity
-    safe_clean ~/.tnpm/_cacache/* "tnpm cache directory"
-    safe_clean ~/.tnpm/_logs/* "tnpm logs"
-    safe_clean ~/.yarn/cache/* "Yarn cache"
-    safe_clean ~/.bun/install/cache/* "Bun cache"
+    safe_clean ~/.tnpm/_cacache/* "tnpm cache directory (tnpm 缓存目录)"
+    safe_clean ~/.tnpm/_logs/* "tnpm logs (tnpm 日志)"
+    safe_clean ~/.yarn/cache/* "Yarn cache (Yarn 缓存)"
+    safe_clean ~/.bun/install/cache/* "Bun cache (Bun 缓存)"
 }
 # Python/pip ecosystem caches.
 clean_dev_python() {
@@ -100,13 +100,13 @@ clean_dev_python() {
         clean_tool_cache "pip cache" bash -c 'pip3 cache purge > /dev/null 2>&1 || true'
         note_activity
     fi
-    safe_clean ~/.pyenv/cache/* "pyenv cache"
-    safe_clean ~/.cache/poetry/* "Poetry cache"
-    safe_clean ~/.cache/uv/* "uv cache"
-    safe_clean ~/.cache/ruff/* "Ruff cache"
-    safe_clean ~/.cache/mypy/* "MyPy cache"
-    safe_clean ~/.pytest_cache/* "Pytest cache"
-    safe_clean ~/.jupyter/runtime/* "Jupyter runtime cache"
+    safe_clean ~/.pyenv/cache/* "pyenv cache (pyenv 缓存)"
+    safe_clean ~/.cache/poetry/* "Poetry cache (Poetry 缓存)"
+    safe_clean ~/.cache/uv/* "uv cache (uv 缓存)"
+    safe_clean ~/.cache/ruff/* "Ruff cache (Ruff 缓存)"
+    safe_clean ~/.cache/mypy/* "MyPy cache (MyPy 缓存)"
+    safe_clean ~/.pytest_cache/* "Pytest cache (Pytest 缓存)"
+    safe_clean ~/.jupyter/runtime/* "Jupyter runtime cache (Jupyter 运行时缓存)"
     safe_clean ~/.cache/huggingface/* "Hugging Face cache"
     safe_clean ~/.cache/torch/* "PyTorch cache"
     safe_clean ~/.cache/tensorflow/* "TensorFlow cache"
@@ -148,9 +148,9 @@ clean_dev_go() {
 }
 # Rust/cargo caches.
 clean_dev_rust() {
-    safe_clean ~/.cargo/registry/cache/* "Rust cargo cache"
-    safe_clean ~/.cargo/git/* "Cargo git cache"
-    safe_clean ~/.rustup/downloads/* "Rust downloads cache"
+    safe_clean ~/.cargo/registry/cache/* "Rust cargo cache (Rust cargo 缓存)"
+    safe_clean ~/.cargo/git/* "Cargo git cache (Cargo git 缓存)"
+    safe_clean ~/.rustup/downloads/* "Rust downloads cache (Rust 下载缓存)"
 }
 
 # Helper: Check for multiple versions in a directory.
@@ -811,8 +811,8 @@ clean_dev_jvm() {
     fi
     safe_clean ~/.sbt/* "SBT cache"
     safe_clean ~/.ivy2/cache/* "Ivy cache"
-    safe_clean ~/.gradle/caches/* "Gradle cache"
-    safe_clean ~/.gradle/daemon/* "Gradle daemon"
+    safe_clean ~/.gradle/caches/* "Gradle cache (Gradle 缓存)"
+    safe_clean ~/.gradle/daemon/* "Gradle daemon (Gradle 守护进程)"
 }
 # JetBrains Toolbox old IDE versions (keep current + recent backup).
 clean_dev_jetbrains_toolbox() {

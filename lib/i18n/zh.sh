@@ -1,0 +1,150 @@
+#!/bin/bash
+# Mole - 中文语言包
+# 中文翻译常量
+
+# ========== 通用文本 ==========
+readonly TXT_OK="确定"
+readonly TXT_CANCEL="取消"
+readonly TXT_QUIT="退出"
+readonly TXT_BACK="返回"
+readonly TXT_SKIP="跳过"
+readonly TXT_CONTINUE="继续"
+readonly TXT_ERROR="错误"
+readonly TXT_WARNING="警告"
+readonly TXT_SUCCESS="成功"
+readonly TXT_FAILED="失败"
+readonly TXT_LOADING="加载中..."
+readonly TXT_COLLECTING="收集中..."
+
+# ========== 主菜单 ==========
+readonly TXT_MAIN_TITLE="Mole - Mac 清理优化工具"
+readonly TXT_MAIN_MENU="请选择操作："
+
+# ========== Clean 命令 ==========
+readonly TXT_CLEAN_TITLE="清理您的 Mac"
+readonly TXT_CLEAN_SYSTEM="系统"
+readonly TXT_CLEAN_USER="用户数据"
+readonly TXT_CLEAN_USER_ESSENTIALS="用户 essentials"
+readonly TXT_CLEAN_APP_CACHES="应用缓存"
+readonly TXT_CLEAN_BROWSERS="浏览器"
+readonly TXT_CLEAN_CLOUD_OFFICE="云盘 & 办公"
+readonly TXT_CLEAN_DEV_TOOLS="开发工具"
+readonly TXT_CLEAN_APPLICATIONS="应用程序"
+readonly TXT_CLEAN_VIRTUALIZATION="虚拟化"
+readonly TXT_CLEAN_APP_SUPPORT="应用支持"
+readonly TXT_CLEAN_ORPHANED="孤儿数据"
+readonly TXT_CLEAN_APPLE_SILICON="Apple Silicon"
+readonly TXT_CLEAN_DEVICE_BACKUPS="设备备份"
+readonly TXT_CLEAN_TIME_MACHINE="Time Machine"
+readonly TXT_CLEAN_LARGE_FILES="大文件"
+readonly TXT_CLEAN_SYSTEM_DATA="系统数据"
+readonly TXT_CLEAN_PROJECT_ARTIFACTS="项目构建产物"
+
+readonly TXT_CLEAN_DRY_RUN="预览模式，仅预览不删除"
+readonly TXT_CLEAN_COMPLETE="清理完成"
+readonly TXT_CLEAN_DRY_RUN_COMPLETE="预览完成 - 未做任何修改"
+readonly TXT_CLEAN_SPACE_FREED="释放空间："
+readonly TXT_CLEAN_ITEMS_CLEANED="清理项目："
+readonly TXT CLEAN_CATEGORIES="分类："
+readonly TXT_CLEAN_NO_ITEMS=" Nothing to clean"
+readonly TXT_CLEAN_ITEMS=" items"
+
+# ========== Status 命令 ==========
+readonly TXT_STATUS_TITLE="系统状态"
+readonly TXT_STATUS_HEALTH="健康度"
+readonly TXT_STATUS_CPU="处理器"
+readonly TXT_STATUS_MEMORY="内存"
+readonly TXT_STATUS_DISK="磁盘"
+readonly TXT_STATUS_NETWORK="网络"
+readonly TXT_STATUS_POWER="电源"
+readonly TXT_STATUS_PROCESSES="进程"
+readonly TXT_STATUS_LOAD="负载"
+readonly TXT_STATUS_TOTAL="总计"
+readonly TXT_STATUS_FREE="可用"
+readonly TXT_STATUS_USED="已用"
+readonly TXT_STATUS_SWAP="交换分区"
+readonly TXT_STATUS_CACHED="缓存"
+readonly TXT STATUS_AVAIL="可用"
+readonly TXT_STATUS_TEMP="温度"
+readonly TXT_STATUS_READ="读取"
+readonly TXT_STATUS_WRITE="写入"
+readonly TXT_STATUS_DOWN="下载"
+readonly TXT_STATUS_UP="上传"
+readonly TXT_STATUS_BATTERY="电池"
+readonly TXT_STATUS_HEALTH_="健康"
+readonly TXT_STATUS_LEVEL="电量"
+readonly TXT_STATUS_CYCLES="循环"
+readonly TXT_STATUS_RPM="转速"
+readonly TXT_STATUS_NO_BATTERY="无电池"
+readonly TXT_STATUS_NO_DATA="无数据"
+readonly TXT_STATUS_NO_DISKS="未检测到磁盘"
+readonly TXT_STATUS_PER_CORE="每核数据不可用，使用平均负载"
+
+# ========== Analyze 命令 ==========
+readonly TXT_ANALYZE_TITLE="磁盘分析"
+readonly TXT_ANALYZE_SCANNING="扫描中..."
+readonly TXT_ANALYZE_TOTAL_SIZE="总大小："
+readonly TXT_ANALYZE_FREE_SPACE="可用空间："
+readonly TXT_ANALYZE_SELECT_DELETE="选择要删除的项目"
+readonly TXT_ANALYZE_DELETE_CONFIRM="确认删除"
+readonly TXT_ANALYZE_DELETING="删除中..."
+readonly TXT_ANALYZE_DELETED="已删除"
+readonly TXT_ANALYZE_SPACE_RECLAIMED="已恢复空间："
+
+# ========== Uninstall 命令 ==========
+readonly TXT_UNINSTALL_TITLE="卸载应用"
+readonly TXT_UNINSTALL_SELECT="选择要卸载的应用"
+readonly TXT_UNINSTALL_UNINSTALLING="卸载中..."
+readonly TXT_UNINSTALL_UNINSTALLED="已卸载"
+readonly TXT_UNINSTALL_REMAINING="残留文件"
+readonly TXT_UNINSTALL_CLEAN_REMAINING="清理残留"
+
+# ========== Optimize 命令 ==========
+readonly TXT_OPTIMIZE_TITLE="优化 Mac"
+readonly TXT_OPTIMIZE_REFRESH="刷新"
+readonly TXT_OPTIMIZE_CACHE="缓存"
+readonly TXT OPTIMIZE_SERVICES="服务"
+readonly TXT_OPTIMIZE_REBUILD="重建"
+readonly TXT_OPTIMIZE_DONE="优化完成"
+
+# ========== Purge 命令 ==========
+readonly TXT_PURGE_TITLE="清理项目构建产物"
+readonly TXT_PURGE_SCANNING="扫描项目中..."
+readonly TXT_PURGE_FOUND="发现"
+readonly TXT_PURGE_ITEMS="项目"
+
+# ========== Check 命令 ==========
+readonly TXT_CHECK_TITLE="系统检查"
+readonly TXT_CHECK_HEALTH="健康检查"
+readonly TXT_CHECK_RUNNING="运行中..."
+readonly TXT_CHECK_ALL_OK="一切正常"
+readonly TXT_CHECK_ISSUES="发现问题"
+
+# ========== 帮助文本 ==========
+readonly TXT_HELP_CLEAN="清理系统缓存、日志和临时文件"
+readonly TXT_HELP_UNINSTALL="卸载应用及其残留文件"
+readonly TXT_HELP_ANALYZE="分析磁盘使用情况"
+readonly TXT_HELP_STATUS="显示实时系统监控"
+readonly TXT_HELP_OPTIMIZE="优化系统性能"
+readonly TXT_HELP_PURGE="清理项目构建产物 (node_modules, target 等)"
+readonly TXT_HELP_UPDATE="更新 Mole"
+readonly TXT_HELP_REMOVE="卸载 Mole"
+
+# ========== 提示信息 ==========
+readonly TXT_HINT_USE_DRY_RUN="使用 --dry-run 预览，--whitelist 管理保护路径"
+readonly TXT_HINT_SUDO_REQUIRED="系统清理需要 sudo 权限"
+readonly TXT_HINT_ENTER_CONTINUE="输入继续，空格跳过："
+readonly TXT_HINT_SKIP="跳过"
+readonly TXT_HINT_CANCELED="已取消"
+readonly TXT_HINT_ADMIN_ACCESS="管理员权限可用"
+readonly TXT_HINT_FULL_DISK_ACCESS="请在系统设置中授予终端完全磁盘访问权限"
+
+# ========== 错误信息 ==========
+readonly TXT_ERR_BINARY_NOT_FOUND="未找到二进制文件，请重新安装 Mole 或运行 mo update 恢复"
+readonly TXT_ERR_PERMISSION_DENIED="权限被拒绝"
+readonly TXT_ERR_NOT_FOUND="未找到"
+
+# ========== 确认信息 ==========
+readonly TXT_CONFIRM_DELETE="确认删除这些项目？"
+readonly TXT_CONFIRM_YES="是"
+readonly TXT_CONFIRM_NO="否"

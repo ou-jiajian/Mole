@@ -1,5 +1,5 @@
 #!/bin/bash
-# Mole - Uninstall command.
+# Mole - 卸载应用命令。
 # Interactive app uninstaller.
 # Removes app files and leftovers.
 
@@ -514,7 +514,7 @@ scan_applications() {
         [[ $cache_source_is_temp == true ]] && rm -f "$cache_source" 2> /dev/null || true
         restore_scan_int_trap
         printf "\r\033[K" >&2
-        echo "No applications found to uninstall." >&2
+        echo "未找到可卸载的应用。" >&2
         return 1
     fi
     # Pass 2: resolve display names in parallel.
@@ -559,7 +559,7 @@ scan_applications() {
         echo "${app_path}|${display_name}|${bundle_id}|${app_mtime}" >> "$output_file"
     }
 
-    update_scan_status "Scanning applications..." "0" "$total_apps"
+    update_scan_status "正在扫描应用..." "0" "$total_apps"
 
     (
         # shellcheck disable=SC2329  # Function invoked indirectly via trap
@@ -574,7 +574,7 @@ scan_applications() {
             local status_line status_message status_completed status_total
             status_line=$(cat "$scan_status_file" 2> /dev/null || echo "")
             IFS='|' read -r status_message status_completed status_total <<< "$status_line"
-            [[ -z "$status_message" ]] && status_message="Scanning applications..."
+            [[ -z "$status_message" ]] && status_message="正在扫描应用..."
             local c="${spinner_chars:$((i % 4)):1}"
             if [[ "$status_completed" =~ ^[0-9]+$ && "$status_total" =~ ^[0-9]+$ && $status_total -gt 0 ]]; then
                 printf "\r\033[K%s %s %d/%d" "$c" "$status_message" "$status_completed" "$status_total" >&2
@@ -591,7 +591,7 @@ scan_applications() {
         ((app_count++))
         process_app_metadata "$app_data_tuple" "$scan_raw_file" &
         pids+=($!)
-        update_scan_status "Scanning applications..." "$app_count" "$total_apps"
+        update_scan_status "正在扫描应用..." "$app_count" "$total_apps"
 
         if ((${#pids[@]} >= max_parallel)); then
             wait "${pids[0]}" 2> /dev/null
@@ -607,7 +607,7 @@ scan_applications() {
 
     if [[ ! -s "$scan_raw_file" ]]; then
         stop_scan_spinner
-        echo "No applications found to uninstall" >&2
+        echo "未找到可卸载的应用" >&2
         rm -f "$temp_file" "$scan_raw_file" "$merged_file" "$refresh_file" "$cache_snapshot_file" "${temp_file}.sorted" "$spinner_shown_file" 2> /dev/null || true
         [[ $cache_source_is_temp == true ]] && rm -f "$cache_source" 2> /dev/null || true
         restore_scan_int_trap
@@ -766,7 +766,7 @@ load_applications() {
     local apps_file="$1"
 
     if [[ ! -f "$apps_file" || ! -s "$apps_file" ]]; then
-        log_warning "No applications found for uninstallation"
+        log_warning "未找到可卸载的应用"
         return 1
     fi
 
@@ -847,7 +847,7 @@ main() {
 
     hide_cursor
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, No app files or settings will be modified"
+        echo -e "${YELLOW}${ICON_DRY_RUN} 预览模式${NC}，不会修改任何应用文件或设置"
         printf '\n'
     fi
 
@@ -897,7 +897,7 @@ main() {
             rm -f "$apps_file"
             continue
         fi
-        echo -e "${BLUE}${ICON_CONFIRM}${NC} Selected ${selection_count} apps:"
+        echo -e "${BLUE}${ICON_CONFIRM}${NC} 已选择 ${selection_count} 个应用："
         local -a summary_rows=()
         local max_name_display_width=0
         local max_size_width=0
@@ -979,7 +979,7 @@ main() {
             prompt_timeout=3
         fi
 
-        echo -e "${GRAY}Press Enter to return to the app list, press any other key or wait ${prompt_timeout}s to exit.${NC}"
+        echo -e "${GRAY}按回车返回应用列表，按其他键或等待 ${prompt_timeout}秒后退出。${NC}"
         local key
         local read_ok=false
         if IFS= read -r -s -n1 -t "$prompt_timeout" key; then

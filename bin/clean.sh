@@ -194,7 +194,7 @@ end_section() {
     stop_section_spinner
 
     if [[ "${TRACK_SECTION:-0}" == "1" && "${SECTION_ACTIVITY:-0}" == "0" ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Nothing to clean"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 无需清理"
     fi
     TRACK_SECTION=0
 }
@@ -650,7 +650,7 @@ safe_clean() {
         fi
 
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} $label${NC}, ${YELLOW}$size_human dry${NC}"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} $label${NC}, ${YELLOW}$size_human 预览${NC}"
 
             local paths_temp
             paths_temp=$(create_temp_file)
@@ -731,15 +731,15 @@ start_cleanup() {
         printf '\033[2J\033[H'
     fi
     printf '\n'
-    echo -e "${PURPLE_BOLD}Clean Your Mac${NC}"
+    echo -e "${PURPLE_BOLD}清理您的 Mac${NC}"
     echo ""
 
     if [[ "$DRY_RUN" != "true" && -t 0 ]]; then
-        echo -e "${GRAY}${ICON_WARNING} Use --dry-run to preview, --whitelist to manage protected paths${NC}"
+        echo -e "${GRAY}${ICON_WARNING} 使用 --dry-run 预览，--whitelist 管理保护路径${NC}"
     fi
 
     if [[ "$DRY_RUN" == "true" ]]; then
-        echo -e "${YELLOW}Dry Run Mode${NC}, Preview only, no deletions"
+        echo -e "${YELLOW}预览模式${NC}，仅预览不删除"
         echo ""
 
         ensure_user_file "$EXPORT_LIST_FILE"
@@ -759,11 +759,11 @@ EOF
         # Preview system section when sudo is already cached (no password prompt).
         if has_sudo_session; then
             SYSTEM_CLEAN=true
-            echo -e "${GREEN}${ICON_SUCCESS}${NC} Admin access available, system preview included"
+            echo -e "${GREEN}${ICON_SUCCESS}${NC} 管理员权限可用，系统预览已包含"
             echo ""
         else
             SYSTEM_CLEAN=false
-            echo -e "${GRAY}${ICON_WARNING} System caches need sudo, run ${NC}sudo -v && mo clean --dry-run${GRAY} for full preview${NC}"
+            echo -e "${GRAY}${ICON_WARNING} 系统缓存需要 sudo，请运行 ${NC}sudo -v && mo clean --dry-run${GRAY} 查看完整预览${NC}"
             echo ""
         fi
         return
@@ -772,38 +772,38 @@ EOF
     if [[ -t 0 ]]; then
         if has_sudo_session; then
             SYSTEM_CLEAN=true
-            echo -e "${GREEN}${ICON_SUCCESS}${NC} Admin access already available"
+            echo -e "${GREEN}${ICON_SUCCESS}${NC} 管理员权限已获取"
             echo ""
         else
-            echo -ne "${PURPLE}${ICON_ARROW}${NC} System caches need sudo. ${GREEN}Enter${NC} continue, ${GRAY}Space${NC} skip: "
+            echo -ne "${PURPLE}${ICON_ARROW}${NC} 系统缓存需要 sudo 权限。${GREEN}回车${NC} 继续，${GRAY}空格${NC} 跳过: "
 
             local choice
             choice=$(read_key)
 
             # ESC/Q aborts, Space skips, Enter enables system cleanup.
             if [[ "$choice" == "QUIT" ]]; then
-                echo -e " ${GRAY}Canceled${NC}"
+                echo -e " ${GRAY}已取消${NC}"
                 exit 0
             fi
 
             if [[ "$choice" == "SPACE" ]]; then
-                echo -e " ${GRAY}Skipped${NC}"
+                echo -e " ${GRAY}已跳过${NC}"
                 echo ""
                 SYSTEM_CLEAN=false
             elif [[ "$choice" == "ENTER" ]]; then
                 printf "\r\033[K" # Clear the prompt line
                 if ensure_sudo_session "System cleanup requires admin access"; then
                     SYSTEM_CLEAN=true
-                    echo -e "${GREEN}${ICON_SUCCESS}${NC} Admin access granted"
+                    echo -e "${GREEN}${ICON_SUCCESS}${NC} 管理员权限已获取"
                     echo ""
                 else
                     SYSTEM_CLEAN=false
                     echo ""
-                    echo -e "${YELLOW}Authentication failed${NC}, continuing with user-level cleanup"
+                    echo -e "${YELLOW}认证失败${NC}，继续用户级清理"
                 fi
             else
                 SYSTEM_CLEAN=false
-                echo -e " ${GRAY}Skipped${NC}"
+                echo -e " ${GRAY}已跳过${NC}"
                 echo ""
             fi
         fi
@@ -828,10 +828,10 @@ perform_cleanup() {
     if [[ "${MOLE_TEST_MODE:-0}" == "1" ]]; then
         test_mode_enabled=true
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "${YELLOW}Dry Run Mode${NC}, Preview only, no deletions"
+            echo -e "${YELLOW}预览模式${NC}，仅预览不删除"
             echo ""
         fi
-        echo -e "${GREEN}${ICON_LIST}${NC} User app cache"
+        echo -e "${GREEN}${ICON_LIST}${NC} 用户应用缓存"
         if [[ ${#WHITELIST_PATTERNS[@]} -gt 0 ]]; then
             local -a expanded_defaults
             expanded_defaults=()
@@ -852,7 +852,7 @@ perform_cleanup() {
         fi
         if [[ "$DRY_RUN" == "true" ]]; then
             echo ""
-            echo "Potential space: 0.00GB"
+            echo "预估空间: 0.00GB"
         fi
         total_items=1
         files_cleaned=0
@@ -860,7 +860,7 @@ perform_cleanup() {
     fi
 
     if [[ "$test_mode_enabled" == "false" ]]; then
-        echo -e "${BLUE}${ICON_ADMIN}${NC} $(detect_architecture) | Free space: $(get_free_space)"
+        echo -e "${BLUE}${ICON_ADMIN}${NC} $(detect_architecture) | 可用空间: $(get_free_space)"
     fi
 
     if [[ "$test_mode_enabled" == "true" ]]; then
@@ -921,7 +921,7 @@ perform_cleanup() {
         fda_status=$?
         if [[ $fda_status -eq 1 ]]; then
             echo ""
-            echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}Grant Full Disk Access to your terminal in System Settings for best results${NC}"
+            echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}请在系统设置中授予终端完全磁盘访问权限以获得最佳效果${NC}"
         fi
     fi
 
@@ -937,7 +937,7 @@ perform_cleanup() {
 
     # ===== 1. System =====
     if [[ "$SYSTEM_CLEAN" == "true" ]]; then
-        start_section "System"
+        start_section "系统"
         clean_deep_system
         clean_local_snapshots
         end_section
@@ -951,50 +951,50 @@ perform_cleanup() {
     fi
 
     # ===== 2. User essentials =====
-    start_section "User essentials"
+    start_section "用户 essentials"
     clean_user_essentials
     clean_finder_metadata
     scan_external_volumes
     end_section
 
     # ===== 3. App caches (merged sandboxed and standard app caches) =====
-    start_section "App caches"
+    start_section "应用缓存"
     clean_app_caches
     end_section
 
     # ===== 4. Browsers =====
-    start_section "Browsers"
+    start_section "浏览器"
     clean_browsers
     end_section
 
     # ===== 5. Cloud & Office =====
-    start_section "Cloud & Office"
+    start_section "云盘 & 办公"
     clean_cloud_storage
     clean_office_applications
     end_section
 
     # ===== 6. Developer tools (merged CLI and GUI tooling) =====
-    start_section "Developer tools"
+    start_section "开发工具"
     clean_developer_tools
     end_section
 
     # ===== 7. Applications =====
-    start_section "Applications"
+    start_section "应用程序"
     clean_user_gui_applications
     end_section
 
     # ===== 8. Virtualization =====
-    start_section "Virtualization"
+    start_section "虚拟化"
     clean_virtualization_tools
     end_section
 
     # ===== 9. Application Support =====
-    start_section "Application Support"
+    start_section "应用支持"
     clean_application_support_logs
     end_section
 
     # ===== 10. Orphaned data =====
-    start_section "Orphaned data"
+    start_section "孤儿数据"
     clean_orphaned_app_data
     clean_orphaned_system_services
     show_user_launch_agent_hint_notice
@@ -1004,7 +1004,7 @@ perform_cleanup() {
     clean_apple_silicon_caches
 
     # ===== 12. Device backups =====
-    start_section "Device backups"
+    start_section "设备备份"
     check_ios_device_backups
     end_section
 
@@ -1014,17 +1014,17 @@ perform_cleanup() {
     end_section
 
     # ===== 14. Large files =====
-    start_section "Large files"
+    start_section "大文件"
     check_large_file_candidates
     end_section
 
     # ===== 15. System Data clues =====
-    start_section "System Data clues"
+    start_section "系统数据提示"
     show_system_data_hint_notice
     end_section
 
     # ===== 16. Project artifacts =====
-    start_section "Project artifacts"
+    start_section "项目构建产物"
     show_project_artifact_hint_notice
     end_section
 
@@ -1034,9 +1034,9 @@ perform_cleanup() {
     local summary_heading=""
     local summary_status="success"
     if [[ "$DRY_RUN" == "true" ]]; then
-        summary_heading="Dry run complete - no changes made"
+        summary_heading="预览完成 - 未做任何修改"
     else
-        summary_heading="Cleanup complete"
+        summary_heading="清理完成"
     fi
 
     local -a summary_details=()
@@ -1046,9 +1046,9 @@ perform_cleanup() {
         freed_size_human=$(bytes_to_human_kb "$total_size_cleaned")
 
         if [[ "$DRY_RUN" == "true" ]]; then
-            local stats="Potential space: ${GREEN}${freed_size_human}${NC}"
+            local stats="预估空间: ${GREEN}${freed_size_human}${NC}"
             [[ $files_cleaned -gt 0 ]] && stats+=" | Items: $files_cleaned"
-            [[ $total_items -gt 0 ]] && stats+=" | Categories: $total_items"
+            [[ $total_items -gt 0 ]] && stats+=" | 分类: $total_items"
             summary_details+=("$stats")
 
             {
@@ -1064,14 +1064,14 @@ perform_cleanup() {
             summary_details+=("Detailed file list: ${GRAY}$EXPORT_LIST_FILE${NC}")
             summary_details+=("Use ${GRAY}mo clean --whitelist${NC} to add protection rules")
         else
-            local summary_line="Space freed: ${GREEN}${freed_size_human}${NC}"
+            local summary_line="释放空间: ${GREEN}${freed_size_human}${NC}"
 
             if [[ $files_cleaned -gt 0 && $total_items -gt 0 ]]; then
-                summary_line+=" | Items cleaned: $files_cleaned | Categories: $total_items"
+                summary_line+=" | 清理项目: $files_cleaned | 分类: $total_items"
             elif [[ $files_cleaned -gt 0 ]]; then
-                summary_line+=" | Items cleaned: $files_cleaned"
+                summary_line+=" | 清理项目: $files_cleaned"
             elif [[ $total_items -gt 0 ]]; then
-                summary_line+=" | Categories: $total_items"
+                summary_line+=" | 分类: $total_items"
             fi
 
             summary_details+=("$summary_line")
@@ -1083,25 +1083,25 @@ perform_cleanup() {
 
                 if [[ $movies -gt 0 ]]; then
                     if [[ $movies -eq 1 ]]; then
-                        summary_details+=("Equivalent to ~$movies 4K movie of storage.")
+                        summary_details+=("相当于约 $movies 部 4K 电影的存储空间。")
                     else
-                        summary_details+=("Equivalent to ~$movies 4K movies of storage.")
+                        summary_details+=("相当于约 $movies 部 4K 电影的存储空间。")
                     fi
                 fi
             fi
 
             local final_free_space
             final_free_space=$(get_free_space)
-            summary_details+=("Free space now: $final_free_space")
+            summary_details+=("当前可用空间: $final_free_space")
         fi
     else
         summary_status="info"
         if [[ "$DRY_RUN" == "true" ]]; then
-            summary_details+=("No significant reclaimable space detected, system already clean.")
+            summary_details+=("未检测到显著可回收空间，系统已经很干净。")
         else
-            summary_details+=("System was already clean; no additional space freed.")
+            summary_details+=("系统已经很干净，无需释放额外空间。")
         fi
-        summary_details+=("Free space now: $(get_free_space)")
+        summary_details+=("当前可用空间: $(get_free_space)")
     fi
 
     if [[ $had_errexit -eq 1 ]]; then
