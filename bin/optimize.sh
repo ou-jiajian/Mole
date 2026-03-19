@@ -1,7 +1,7 @@
 #!/bin/bash
-# Mole - Optimize command.
-# Runs system maintenance tasks.
-# Supports dry-run where applicable.
+# Mole - 优化命令。
+# 运行系统维护检查和修复。
+# 支持预览模式。
 
 set -euo pipefail
 
@@ -23,7 +23,7 @@ source "$SCRIPT_DIR/lib/manage/whitelist.sh"
 
 print_header() {
     printf '\n'
-    echo -e "${PURPLE_BOLD}Optimize${NC}"
+    echo -e "${PURPLE_BOLD}优化和检查${NC}"
 }
 
 # Bash-native JSON parsing helpers (no jq dependency).
@@ -173,6 +173,8 @@ announce_action() {
     echo -e "${BLUE}${ICON_ARROW} ${name}${NC}"
 }
 
+
+
 cleanup_all() {
     stop_inline_spinner 2> /dev/null || true
     stop_sudo_session
@@ -227,12 +229,12 @@ main() {
 
     # Dry-run indicator.
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, No files will be modified\n"
+        echo -e "${YELLOW}${ICON_DRY_RUN} 预览模式${NC}，不会修改任何文件\n"
     fi
 
     if ! command -v bc > /dev/null 2>&1; then
         echo -e "${YELLOW}${ICON_ERROR}${NC} Missing dependency: bc"
-        echo -e "${GRAY}Install with: ${GREEN}brew install bc${NC}"
+        echo -e "${GRAY}安装方法: ${GREEN}brew install bc${NC}"
         exit 1
     fi
 
@@ -271,7 +273,7 @@ main() {
                 IFS=', '
                 echo "${CURRENT_WHITELIST_PATTERNS[*]}"
             )
-            echo -e "${ICON_ADMIN} Active Whitelist: ${patterns_list}"
+            echo -e "${ICON_ADMIN} 当前白名单: ${patterns_list}"
         fi
     fi
 

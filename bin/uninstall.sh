@@ -1,5 +1,5 @@
 #!/bin/bash
-# Mole - Uninstall command.
+# Mole - 卸载应用命令。
 # Interactive app uninstaller.
 # Removes app files and leftovers.
 
@@ -637,7 +637,7 @@ _scan_resolve_uncached() {
         echo "${app_path}|${display_name}|${bundle_id}|${app_mtime}" >> "$output_file"
     }
 
-    update_scan_status "Scanning applications..." "0" "$total_apps"
+    update_scan_status "正在扫描应用..." "0" "$total_apps"
 
     # Skip Pass 2 when the warm cache already wrote every row to $scan_raw_file.
     # Also avoids expanding an empty array — macOS bash 3.2 (the /bin/bash that
@@ -647,7 +647,7 @@ _scan_resolve_uncached() {
             ((app_count++))
             process_app_metadata "$app_data_tuple" "$scan_raw_file" &
             pids+=($!)
-            update_scan_status "Scanning applications..." "$app_count" "$total_apps"
+            update_scan_status "正在扫描应用..." "$app_count" "$total_apps"
 
             if ((${#pids[@]} >= max_parallel)); then
                 wait "${pids[0]}" 2> /dev/null
@@ -698,6 +698,7 @@ _scan_dedupe_bundle_ids() {
                 order[++count] = key
                 next
             }
+
 
             rank = path_rank($1)
             if (!(bundle_id in rows)) {
@@ -1062,7 +1063,7 @@ load_applications() {
     local apps_file="$1"
 
     if [[ ! -f "$apps_file" || ! -s "$apps_file" ]]; then
-        log_warning "No applications found for uninstallation"
+        log_warning "未找到可卸载的应用"
         return 1
     fi
 
@@ -1368,7 +1369,7 @@ main() {
 
     hide_cursor
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, No app files or settings will be modified"
+        echo -e "${YELLOW}${ICON_DRY_RUN} 预览模式${NC}，不会修改任何应用文件或设置"
         printf '\n'
     fi
 
@@ -1499,7 +1500,7 @@ main() {
             echo "No apps selected"
             continue
         fi
-        echo -e "${BLUE}${ICON_CONFIRM}${NC} Selected ${selection_count} apps:"
+        echo -e "${BLUE}${ICON_CONFIRM}${NC} 已选择 ${selection_count} 个应用："
         local -a summary_rows=()
         local max_name_display_width=0
         local max_size_width=0
@@ -1588,7 +1589,7 @@ main() {
         local _key=""
         local _pressed=false
         while [[ $_countdown -gt 0 ]]; do
-            printf "\r${GRAY}Press Enter to return to the app list, press q to exit (%d)${NC} " "$_countdown"
+            printf "\r${GRAY}按回车返回应用列表，按 q 退出 (%d)${NC} " "$_countdown"
             if IFS= read -r -s -n1 -t 1 _key; then
                 _pressed=true
                 break

@@ -49,7 +49,7 @@ trap cleanup_temp_files EXIT INT TERM
 
 # Version and update helpers
 VERSION="1.42.0"
-MOLE_TAGLINE="Deep clean and optimize your Mac."
+MOLE_TAGLINE="深度清理和优化您的 Mac。"
 
 is_touchid_configured() {
     grep -q "pam_tid.so" /etc/pam.d/sudo /etc/pam.d/sudo_local 2> /dev/null
@@ -331,8 +331,8 @@ show_version() {
 show_help() {
     show_brand_banner
     echo
-    printf "%s%s%s\n" "$BLUE" "COMMANDS" "$NC"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo" "$NC" "Main menu"
+    printf "%s%s%s\n" "$BLUE" "命令" "$NC"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo" "$NC" "主菜单"
     for entry in "${MOLE_COMMANDS[@]}"; do
         local name="${entry%%:*}"
         local desc="${entry#*:}"
@@ -342,25 +342,25 @@ show_help() {
         printf "  %s%-28s%s %s\n" "$GREEN" "$display" "$NC" "$desc"
     done
     echo
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --dry-run" "$NC" "Preview cleanup"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --whitelist" "$NC" "Manage protected caches"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --dry-run" "$NC" "预览清理效果"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --whitelist" "$NC" "管理受保护的缓存"
 
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo optimize --dry-run" "$NC" "Preview optimization"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo optimize --whitelist" "$NC" "Manage protected items"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo uninstall --dry-run" "$NC" "Preview app uninstall"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo history --json" "$NC" "Export cleanup history"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo purge --dry-run" "$NC" "Preview project purge"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo installer --dry-run" "$NC" "Preview installer cleanup"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo touchid enable --dry-run" "$NC" "Preview Touch ID setup"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo completion --dry-run" "$NC" "Preview shell completion edits"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo purge --paths" "$NC" "Configure scan directories"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze /Volumes" "$NC" "Analyze external drives only"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --force" "$NC" "Force reinstall latest stable version"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --nightly" "$NC" "Install latest unreleased main branch build"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo remove --dry-run" "$NC" "Preview Mole removal"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo optimize --dry-run" "$NC" "预览优化效果"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo optimize --whitelist" "$NC" "管理受保护的项"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo uninstall --dry-run" "$NC" "预览卸载效果"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo history --json" "$NC" "导出清理历史"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo purge --dry-run" "$NC" "预览项目清理"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo installer --dry-run" "$NC" "预览安装包清理"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo touchid enable --dry-run" "$NC" "预览 Touch ID 设置"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo completion --dry-run" "$NC" "预览 Shell 补全设置"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo purge --paths" "$NC" "配置扫描目录"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze /Volumes" "$NC" "仅分析外置硬盘"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --force" "$NC" "强制重装最新稳定版"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo update --nightly" "$NC" "安装最新开发版"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo remove --dry-run" "$NC" "预览移除 Mole"
     echo
-    printf "%s%s%s\n" "$BLUE" "OPTIONS" "$NC"
-    printf "  %s%-28s%s %s\n" "$GREEN" "--debug" "$NC" "Show detailed operation logs"
+    printf "%s%s%s\n" "$BLUE" "选项" "$NC"
+    printf "  %s%-28s%s %s\n" "$GREEN" "--debug" "$NC" "显示详细操作日志"
     echo
 }
 
@@ -623,10 +623,6 @@ update_mole() {
 # Remove flow (Homebrew + manual + config/cache).
 remove_mole() {
     local dry_run_mode="${1:-false}"
-    local test_mode=false
-    if [[ "${MOLE_TEST_MODE:-0}" == "1" ]]; then
-        test_mode=true
-    fi
 
     if [[ -t 1 ]]; then
         start_inline_spinner "Detecting Mole installations..."
@@ -640,47 +636,38 @@ remove_mole() {
     local -a manual_installs=()
     local -a alias_installs=()
 
-    if [[ "$test_mode" != "true" ]]; then
-        if command -v brew > /dev/null 2>&1; then
-            brew_cmd="brew"
-        elif [[ -x "/opt/homebrew/bin/brew" ]]; then
-            brew_cmd="/opt/homebrew/bin/brew"
-        elif [[ -x "/usr/local/bin/brew" ]]; then
-            brew_cmd="/usr/local/bin/brew"
-        fi
+    if command -v brew > /dev/null 2>&1; then
+        brew_cmd="brew"
+    elif [[ -x "/opt/homebrew/bin/brew" ]]; then
+        brew_cmd="/opt/homebrew/bin/brew"
+    elif [[ -x "/usr/local/bin/brew" ]]; then
+        brew_cmd="/usr/local/bin/brew"
+    fi
 
         if [[ -n "$brew_cmd" ]]; then
             if brew_mole_formula_installed "$brew_cmd"; then
                 brew_has_mole="true"
             fi
         fi
+    fi
 
-        if [[ "$brew_has_mole" == "true" ]] || is_homebrew_install; then
-            is_homebrew=true
-        fi
+    if [[ "$brew_has_mole" == "true" ]] || is_homebrew_install; then
+        is_homebrew=true
     fi
 
     local found_mole
-    found_mole=""
-    if [[ "$test_mode" != "true" ]]; then
-        found_mole=$(command -v mole 2> /dev/null || true)
-        if [[ -n "$found_mole" && -f "$found_mole" ]]; then
-            if [[ ! -L "$found_mole" ]] || ! readlink "$found_mole" | grep -q "Cellar/mole"; then
-                manual_installs+=("$found_mole")
-            fi
+    found_mole=$(command -v mole 2> /dev/null || true)
+    if [[ -n "$found_mole" && -f "$found_mole" ]]; then
+        if [[ ! -L "$found_mole" ]] || ! readlink "$found_mole" | grep -q "Cellar/mole"; then
+            manual_installs+=("$found_mole")
         fi
     fi
 
-    local -a fallback_paths=()
-    if [[ "$test_mode" == "true" ]]; then
-        fallback_paths=("$HOME/.local/bin/mole")
-    else
-        fallback_paths=(
-            "/usr/local/bin/mole"
-            "$HOME/.local/bin/mole"
-            "/opt/local/bin/mole"
-        )
-    fi
+    local -a fallback_paths=(
+        "/usr/local/bin/mole"
+        "$HOME/.local/bin/mole"
+        "/opt/local/bin/mole"
+    )
 
     for path in "${fallback_paths[@]}"; do
         if [[ -f "$path" && "$path" != "$found_mole" ]]; then
@@ -691,26 +678,18 @@ remove_mole() {
     done
 
     local found_mo
-    found_mo=""
-    if [[ "$test_mode" != "true" ]]; then
-        found_mo=$(command -v mo 2> /dev/null || true)
-        if [[ -n "$found_mo" && -f "$found_mo" ]]; then
-            if [[ ! -L "$found_mo" ]] || ! readlink "$found_mo" | grep -q "Cellar/mole"; then
-                alias_installs+=("$found_mo")
-            fi
+    found_mo=$(command -v mo 2> /dev/null || true)
+    if [[ -n "$found_mo" && -f "$found_mo" ]]; then
+        if [[ ! -L "$found_mo" ]] || ! readlink "$found_mo" | grep -q "Cellar/mole"; then
+            alias_installs+=("$found_mo")
         fi
     fi
 
-    local -a alias_fallback=()
-    if [[ "$test_mode" == "true" ]]; then
-        alias_fallback=("$HOME/.local/bin/mo")
-    else
-        alias_fallback=(
-            "/usr/local/bin/mo"
-            "$HOME/.local/bin/mo"
-            "/opt/local/bin/mo"
-        )
-    fi
+    local -a alias_fallback=(
+        "/usr/local/bin/mo"
+        "$HOME/.local/bin/mo"
+        "/opt/local/bin/mo"
+    )
 
     for alias in "${alias_fallback[@]}"; do
         if [[ -f "$alias" && "$alias" != "$found_mo" ]]; then
@@ -885,21 +864,21 @@ show_main_menu() {
 
     printf '\r\033[2K\n'
 
-    printf '\r\033[2K%s\n' "$(show_menu_option 1 "Clean        Free up disk space" "$([[ $selected -eq 1 ]] && echo true || echo false)")"
-    printf '\r\033[2K%s\n' "$(show_menu_option 2 "Uninstall    Remove apps completely" "$([[ $selected -eq 2 ]] && echo true || echo false)")"
-    printf '\r\033[2K%s\n' "$(show_menu_option 3 "Optimize     Refresh caches and services" "$([[ $selected -eq 3 ]] && echo true || echo false)")"
-    printf '\r\033[2K%s\n' "$(show_menu_option 4 "Analyze      Explore disk usage" "$([[ $selected -eq 4 ]] && echo true || echo false)")"
-    printf '\r\033[2K%s\n' "$(show_menu_option 5 "Status       Monitor system health" "$([[ $selected -eq 5 ]] && echo true || echo false)")"
+    printf '\r\033[2K%s\n' "$(show_menu_option 1 "Clean        清理磁盘空间" "$([[ $selected -eq 1 ]] && echo true || echo false)")"
+    printf '\r\033[2K%s\n' "$(show_menu_option 2 "Uninstall    完全卸载应用" "$([[ $selected -eq 2 ]] && echo true || echo false)")"
+    printf '\r\033[2K%s\n' "$(show_menu_option 3 "Optimize     检查维护系统" "$([[ $selected -eq 3 ]] && echo true || echo false)")"
+    printf '\r\033[2K%s\n' "$(show_menu_option 4 "Analyze      分析磁盘使用" "$([[ $selected -eq 4 ]] && echo true || echo false)")"
+    printf '\r\033[2K%s\n' "$(show_menu_option 5 "Status       监控健康状况" "$([[ $selected -eq 5 ]] && echo true || echo false)")"
 
     if [[ -t 0 ]]; then
         printf '\r\033[2K\n'
-        local controls="${GRAY}↑↓  |  Enter  |  M More  |  V Version"
+        local controls="${GRAY}↑↓  |  回车  |  M 更多  |  V 版本"
         if ! is_touchid_configured; then
-            controls="${controls}  |  T TouchID"
+            controls="${controls}  |  T 触控ID"
         elif [[ "${MAIN_MENU_SHOW_UPDATE:-false}" == "true" ]]; then
             controls="${controls}  |  U Update"
         fi
-        controls="${controls}  |  Q Quit${NC}"
+        controls="${controls}  |  Q 退出${NC}"
         printf '\r\033[2K%s\n' "$controls"
         printf '\r\033[2K\n'
     fi

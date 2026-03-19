@@ -61,7 +61,7 @@ clean_deep_system() {
             \) -print0 2> /dev/null || true)
     fi
     stop_section_spinner
-    [[ $cache_cleaned -eq 1 ]] && log_success "System caches"
+    [[ $cache_cleaned -eq 1 ]] && log_success "System caches (系统缓存)"
     start_section_spinner "Cleaning system temporary files..."
     local tmp_cleaned=0
     local -a sys_temp_dirs=("/private/tmp" "/private/var/tmp")
@@ -73,13 +73,13 @@ clean_deep_system() {
         fi
     done
     stop_section_spinner
-    [[ $tmp_cleaned -eq 1 ]] && log_success "System temp files"
+    [[ $tmp_cleaned -eq 1 ]] && log_success "System temp files (系统临时文件)"
     start_section_spinner "Cleaning system crash reports..."
     if sudo find "/Library/Logs/DiagnosticReports" -maxdepth 1 -type f -mtime "+$MOLE_CRASH_REPORT_AGE_DAYS" -print -quit 2> /dev/null | grep -q .; then
         safe_sudo_find_delete "/Library/Logs/DiagnosticReports" "*" "$MOLE_CRASH_REPORT_AGE_DAYS" "f" || true
     fi
     stop_section_spinner
-    log_success "System crash reports"
+    log_success "System crash reports (系统崩溃报告)"
     start_section_spinner "Cleaning system logs..."
     if sudo find "/private/var/log" -maxdepth 3 -type f \( -name "*.log" -o -name "*.gz" -o -name "*.asl" \) -mtime "+$MOLE_LOG_AGE_DAYS" -print -quit 2> /dev/null | grep -q .; then
         safe_sudo_find_delete "/private/var/log" "*.log" "$MOLE_LOG_AGE_DAYS" "f" || true
@@ -87,7 +87,7 @@ clean_deep_system() {
         safe_sudo_find_delete "/private/var/log" "*.asl" "$MOLE_LOG_AGE_DAYS" "f" || true
     fi
     stop_section_spinner
-    log_success "System logs"
+    log_success "System logs (系统日志)"
     start_section_spinner "Cleaning third-party system logs..."
     local -a third_party_log_dirs=(
         "/Library/Logs/Adobe"
@@ -110,7 +110,7 @@ clean_deep_system() {
         fi
     fi
     stop_section_spinner
-    [[ $third_party_logs_cleaned -eq 1 ]] && log_success "Third-party system logs"
+    [[ $third_party_logs_cleaned -eq 1 ]] && log_success "Third-party system logs (第三方系统日志)"
     start_section_spinner "Scanning system library updates..."
     if [[ -d "/Library/Updates" && ! -L "/Library/Updates" ]]; then
         local updates_cleaned=0
@@ -129,7 +129,7 @@ clean_deep_system() {
             fi
         done < <(find /Library/Updates -mindepth 1 -maxdepth 1 -print0 2> /dev/null || true)
         stop_section_spinner
-        [[ $updates_cleaned -gt 0 ]] && log_success "System library updates"
+        [[ $updates_cleaned -gt 0 ]] && log_success "System library updates (系统更新文件)"
     else
         stop_section_spinner
     fi
@@ -147,7 +147,7 @@ clean_deep_system() {
                 size_human=$(bytes_to_human "$((size_kb * 1024))")
                 debug_log "Cleaning macOS Install Data: $size_human, ${age_days} days old"
                 if safe_sudo_remove "/macOS Install Data"; then
-                    log_success "macOS Install Data, $size_human"
+                    log_success "macOS Install Data (macOS 安装数据), $size_human"
                 fi
             fi
         else
@@ -212,7 +212,7 @@ clean_deep_system() {
         fi
     done < <(run_with_timeout "$MOLE_TIMEOUT_MEDIUM_PROBE_SEC" command find /private/var/folders -maxdepth 5 -type d -name "*.code_sign_clone" -path "*/X/*" -print0 2> /dev/null || true)
     stop_section_spinner
-    [[ $code_sign_cleaned -gt 0 ]] && log_success "Browser code signature caches, $code_sign_cleaned items"
+    [[ $code_sign_cleaned -gt 0 ]] && log_success "Browser code signature caches (浏览器代码签名缓存), $code_sign_cleaned 项"
 
     start_section_spinner "Cleaning rebuildable system service caches..."
     local rebuildable_cache_cleaned=0
@@ -261,12 +261,12 @@ clean_deep_system() {
     safe_sudo_find_delete "$diag_base" "*.tracev3" "30" "f" || true
     safe_sudo_find_delete "/private/var/db/DiagnosticPipeline" "*" "$MOLE_LOG_AGE_DAYS" "f" || true
     stop_section_spinner
-    log_success "System diagnostic logs"
+    log_success "System diagnostic logs (系统诊断日志)"
 
     start_section_spinner "Cleaning power logs..."
     safe_sudo_find_delete "/private/var/db/powerlog" "*" "$MOLE_LOG_AGE_DAYS" "f" || true
     stop_section_spinner
-    log_success "Power logs"
+    log_success "Power logs (电源日志)"
     start_section_spinner "Cleaning memory exception reports..."
     local mem_reports_dir="/private/var/db/reportmemoryexception/MemoryLimitViolations"
     local mem_cleaned=0
@@ -300,7 +300,7 @@ clean_deep_system() {
     fi
     stop_section_spinner
     if [[ $mem_cleaned -eq 1 ]]; then
-        log_success "Memory exception reports"
+        log_success "Memory exception reports (内存异常报告)"
     fi
     return 0
 }

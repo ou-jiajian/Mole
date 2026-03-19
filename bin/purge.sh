@@ -285,18 +285,18 @@ perform_purge() {
 
 # Show help message
 show_help() {
-    echo -e "${PURPLE_BOLD}Mole Purge${NC}, Clean old project build artifacts"
+    echo -e "${PURPLE_BOLD}Mole Purge${NC}, 清理旧的项目构建产物"
     echo ""
-    echo -e "${YELLOW}Usage:${NC} mo purge [options]"
+    echo -e "${YELLOW}用法:${NC} mo purge [选项]"
     echo ""
-    echo -e "${YELLOW}Options:${NC}"
-    echo "  --paths         Edit custom scan directories"
-    echo "  --dry-run       Preview purge actions without making changes"
-    echo "  --include-empty Show zero-size project artifact directories"
-    echo "  --debug         Enable debug logging"
-    echo "  --help          Show this help message"
+    echo -e "${YELLOW}选项:${NC}"
+    echo "  --paths         编辑自定义扫描目录"
+    echo "  --dry-run       预览清理效果，不做任何修改"
+    echo "  --include-empty 显示零大小的项目构建产物目录"
+    echo "  --debug         启用调试日志"
+    echo "  --help          显示此帮助信息"
     echo ""
-    echo -e "${YELLOW}Default Paths:${NC}"
+    echo -e "${YELLOW}默认路径:${NC}"
     for path in "${DEFAULT_PURGE_SEARCH_PATHS[@]}"; do
         echo "  * $path"
     done
@@ -335,7 +335,7 @@ main() {
 
     start_purge
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, No project artifacts will be removed"
+        echo -e "${YELLOW}${ICON_DRY_RUN} 预览模式${NC}，不会删除任何项目产物"
         printf '\n'
     fi
     hide_cursor

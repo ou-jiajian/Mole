@@ -140,7 +140,7 @@ clean_dev_npm() {
 
     # These residual directories are not removed by `npm cache clean --force`
     local -a npm_residual_dirs=("_cacache" "_npx" "_logs" "_prebuilds")
-    local -a npm_descriptions=("npm cache directory" "npm npx cache" "npm logs" "npm prebuilds")
+    local -a npm_descriptions=("npm cache directory (npm 缓存目录)" "npm npx cache (npm npx 缓存)" "npm logs (npm 日志)" "npm prebuilds (npm 预构建)")
 
     # Clean default npm cache path
     local i
@@ -161,7 +161,7 @@ clean_dev_npm() {
     # Clean custom npm cache path (if different from default)
     if [[ "$npm_cache_path_normalized" != "$npm_default_cache_normalized" ]]; then
         for i in "${!npm_residual_dirs[@]}"; do
-            safe_clean "$npm_cache_path/${npm_residual_dirs[$i]}"/* "${npm_descriptions[$i]} (custom path)"
+            safe_clean "$npm_cache_path/${npm_residual_dirs[$i]}"/* "${npm_descriptions[$i]} (自定义路径)"
         done
     fi
 
@@ -188,7 +188,7 @@ clean_dev_npm() {
     local bun_cache_cleaned=false
     local bun_dry_run="${DRY_RUN:-false}"
     if command -v bun > /dev/null 2>&1 && bun --version > /dev/null 2>&1; then
-        if [[ -t 1 ]]; then start_section_spinner "Checking bun cache path..."; fi
+        if [[ -t 1 ]]; then start_section_spinner "检查 bun 缓存路径..."; fi
         bun_cache_path=$(run_with_timeout "$MOLE_TIMEOUT_QUICK_DETECT_SEC" bun pm cache 2> /dev/null) || bun_cache_path=""
         if [[ -t 1 ]]; then stop_section_spinner; fi
 
@@ -201,14 +201,14 @@ clean_dev_npm() {
 
         if [[ "$bun_protected" == "true" ]]; then
             if [[ "$bun_dry_run" == "true" ]]; then
-                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} bun cache · would skip (whitelist)"
+                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} bun cache · 已在白名单中，跳过"
             else
-                echo -e "  ${GREEN}${ICON_SUCCESS}${NC} bun cache · skipped (whitelist)"
+                echo -e "  ${GREEN}${ICON_SUCCESS}${NC} bun cache · 已跳过（白名单）"
             fi
             bun_cache_cleaned=true
         elif [[ "$bun_dry_run" != "true" ]]; then
             if [[ -t 1 ]]; then
-                start_section_spinner "Cleaning bun cache..."
+                start_section_spinner "清理 bun cache..."
             fi
             if run_with_timeout "$MOLE_TIMEOUT_PKG_LIST_SEC" bun pm cache rm > /dev/null 2>&1; then
                 bun_cache_cleaned=true
@@ -220,7 +220,7 @@ clean_dev_npm() {
                 echo -e "  ${GREEN}${ICON_SUCCESS}${NC} bun cache"
             fi
         else
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} bun cache · would clean"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} bun cache · 将清理"
             bun_cache_cleaned=true
         fi
 
@@ -234,20 +234,20 @@ clean_dev_npm() {
         fi
 
         if [[ "$bun_cache_path_normalized" != "$bun_default_cache_normalized" ]]; then
-            safe_clean "$bun_default_cache"/* "Orphaned bun cache"
+            safe_clean "$bun_default_cache"/* "孤儿 bun cache"
         fi
 
         # If bun pm cache rm fails, fall back to filesystem cleanup to avoid no-op.
         if [[ "$bun_cache_cleaned" != "true" ]]; then
-            safe_clean "$bun_cache_path"/* "Bun cache"
+            safe_clean "$bun_cache_path"/* "bun cache"
         fi
     else
-        safe_clean "$bun_default_cache"/* "Bun cache"
+        safe_clean "$bun_default_cache"/* "bun cache"
     fi
 
     note_activity
-    safe_clean ~/.tnpm/_cacache/* "tnpm cache directory"
-    safe_clean ~/.tnpm/_logs/* "tnpm logs"
+    safe_clean ~/.tnpm/_cacache/* "tnpm cache 目录"
+    safe_clean ~/.tnpm/_logs/* "tnpm 日志"
     safe_clean ~/.yarn/cache/* "Yarn cache"
     safe_clean ~/Library/Caches/Yarn/* "Yarn v1 cache"
 }
@@ -269,7 +269,7 @@ clean_dev_python() {
     safe_clean ~/.cache/ruff/* "Ruff cache"
     safe_clean ~/.cache/mypy/* "MyPy cache"
     safe_clean ~/.pytest_cache/* "Pytest cache"
-    safe_clean ~/.jupyter/runtime/* "Jupyter runtime cache"
+    safe_clean ~/.jupyter/runtime/* "Jupyter 运行时缓存"
     safe_clean ~/.cache/huggingface/* "Hugging Face cache"
     safe_clean ~/.cache/torch/* "PyTorch cache"
     safe_clean ~/.cache/tensorflow/* "TensorFlow cache"
@@ -348,9 +348,9 @@ clean_dev_mise() {
 }
 # Rust/cargo caches.
 clean_dev_rust() {
-    safe_clean ~/.cargo/registry/cache/* "Rust cargo cache"
-    safe_clean ~/.cargo/git/* "Cargo git cache"
-    safe_clean ~/.rustup/downloads/* "Rust downloads cache"
+    safe_clean ~/.cargo/registry/cache/* "Rust cargo cache (Rust cargo 缓存)"
+    safe_clean ~/.cargo/git/* "Cargo git cache (Cargo git 缓存)"
+    safe_clean ~/.rustup/downloads/* "Rust downloads cache (Rust 下载缓存)"
 }
 # Ruby/gem ecosystem caches (not installed versions).
 clean_dev_ruby() {
@@ -1065,9 +1065,9 @@ clean_dev_jvm() {
     safe_clean ~/.sbt/launchers/* "SBT launcher cache"
     safe_clean ~/.ivy2/cache/* "Ivy cache"
     safe_clean ~/.gradle/caches/build-cache-*/* "Gradle build cache"
-    safe_clean ~/.gradle/notifications/* "Gradle notifications cache"
+    safe_clean ~/.gradle/notifications/* "Gradle 通知缓存"
     if gradle_daemon_running; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Gradle daemon is running · daemon/workers cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Gradle 守护进程正在运行，跳过 daemon/workers 清理"
     else
         safe_clean ~/.gradle/daemon/* "Gradle daemon"
         safe_clean ~/.gradle/workers/* "Gradle workers"

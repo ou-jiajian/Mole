@@ -69,7 +69,7 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 	}
 	score -= cpuPenalty
 	if cpu.Usage > cpuHighThreshold {
-		issues = append(issues, "High CPU")
+		issues = append(issues, "CPU 负载高")
 	}
 
 	// Memory penalty.
@@ -83,17 +83,17 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 	}
 	score -= memPenalty
 	if mem.UsedPercent > memHighThreshold {
-		issues = append(issues, "High Memory")
+		issues = append(issues, "内存占用高")
 	}
 
 	// Memory pressure penalty.
 	switch mem.Pressure {
 	case "warn":
 		score -= memPressureWarnPenalty
-		issues = append(issues, "Memory Pressure")
+		issues = append(issues, "内存压力")
 	case "critical":
 		score -= memPressureCritPenalty
-		issues = append(issues, "Critical Memory")
+		issues = append(issues, "内存严重不足")
 	}
 
 	// Disk penalty.
@@ -109,7 +109,7 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 		}
 		score -= diskPenalty
 		if diskUsage > diskCritThreshold {
-			issues = append(issues, "Disk Almost Full")
+			issues = append(issues, "磁盘空间不足")
 		}
 	}
 
@@ -119,7 +119,7 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 		if thermal.CPUTemp > thermalNormalThreshold {
 			if thermal.CPUTemp > thermalHighThreshold {
 				thermalPenalty = healthThermalWeight
-				issues = append(issues, "Overheating")
+				issues = append(issues, "温度过高")
 			} else {
 				thermalPenalty = healthThermalWeight * (thermal.CPUTemp - thermalNormalThreshold) / (thermalHighThreshold - thermalNormalThreshold)
 			}
@@ -133,7 +133,7 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 	if totalIO > ioNormalThreshold {
 		if totalIO > ioHighThreshold {
 			ioPenalty = healthIOWeight
-			issues = append(issues, "Heavy Disk IO")
+			issues = append(issues, "磁盘IO繁忙")
 		} else {
 			ioPenalty = healthIOWeight * (totalIO - ioNormalThreshold) / (ioHighThreshold - ioNormalThreshold)
 		}
@@ -173,13 +173,13 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 	var msg string
 	switch {
 	case score >= scoreExcellentThreshold:
-		msg = "Excellent"
+		msg = "优秀"
 	case score >= scoreGoodThreshold:
-		msg = "Good"
+		msg = "良好"
 	case score >= scoreFairThreshold:
-		msg = "Fair"
+		msg = "一般"
 	default:
-		msg = "Needs Attention"
+		msg = "需要关注"
 	}
 
 	if len(issues) > 0 {

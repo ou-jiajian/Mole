@@ -53,10 +53,10 @@ clean_trash() {
 
 clean_user_essentials() {
     start_section_spinner "Scanning caches..."
-    safe_clean ~/Library/Caches/* "User app cache"
+    safe_clean ~/Library/Caches/* "User app cache (用户应用缓存)"
     stop_section_spinner
 
-    safe_clean ~/Library/Logs/* "User app logs"
+    safe_clean ~/Library/Logs/* "User app logs (用户应用日志)"
 
     start_section_spinner "Cleaning runtime files..."
     _clean_darwin_user_runtime_dirs
@@ -343,7 +343,7 @@ clean_chrome_old_versions() {
     fi
 
     if is_google_chrome_running; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Google Chrome running · old versions cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Google Chrome 正在运行 · 旧版本清理已跳过"
         return 0
     fi
 
@@ -460,7 +460,7 @@ clean_edge_old_versions() {
 
     # Match the exact Edge process name to avoid false positives (e.g., Microsoft Teams)
     if pgrep -x "Microsoft Edge" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge running · old versions cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge 正在运行 · 旧版本清理已跳过"
         return 0
     fi
 
@@ -546,7 +546,7 @@ clean_edge_updater_old_versions() {
     [[ -d "$updater_dir" ]] || return 0
 
     if pgrep -x "Microsoft Edge" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge running · updater cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge 正在运行 · updater 清理已跳过"
         return 0
     fi
 
@@ -729,10 +729,13 @@ clean_support_app_data() {
         fi
     fi
 
+    # Clean old aerial wallpaper videos (can be large, safe to remove).
+    safe_clean ~/Library/Application\ Support/com.apple.wallpaper/aerials/videos/* "Aerial wallpaper videos (航拍壁纸视频)"
+
     # Do not touch Messages attachments, only preview/sticker caches.
-    safe_clean ~/Library/Messages/StickerCache/* "Messages sticker cache"
-    safe_clean ~/Library/Messages/Caches/Previews/Attachments/* "Messages preview attachment cache"
-    safe_clean ~/Library/Messages/Caches/Previews/StickerCache/* "Messages preview sticker cache"
+    safe_clean ~/Library/Messages/StickerCache/* "Messages 表情包缓存"
+    safe_clean ~/Library/Messages/Caches/Previews/Attachments/* "Messages 预览附件缓存"
+    safe_clean ~/Library/Messages/Caches/Previews/StickerCache/* "Messages 预览表情包缓存"
 }
 
 # App caches (merged: macOS system caches + Sandboxed apps).
@@ -793,48 +796,48 @@ clean_app_caches() {
     start_section_spinner "Scanning app caches..."
 
     # macOS system caches (merged from clean_macos_system_caches)
-    safe_clean ~/Library/Saved\ Application\ State/* "Saved application states" || true
-    safe_clean ~/Library/Caches/com.apple.photoanalysisd "Photo analysis cache" || true
-    safe_clean ~/Library/Caches/com.apple.akd "Apple ID cache" || true
-    safe_clean ~/Library/Caches/com.apple.WebKit.Networking/* "WebKit network cache" || true
-    safe_clean ~/Library/DiagnosticReports/* "Diagnostic reports" || true
-    safe_clean ~/Library/Caches/com.apple.QuickLook.thumbnailcache "QuickLook thumbnails" || true
-    safe_clean ~/Library/Caches/Quick\ Look/* "QuickLook cache" || true
-    safe_clean ~/Library/Caches/com.apple.iconservices* "Icon services cache" || true
+    safe_clean ~/Library/Saved\ Application\ State/* "应用保存状态" || true
+    safe_clean ~/Library/Caches/com.apple.photoanalysisd "照片分析缓存" || true
+    safe_clean ~/Library/Caches/com.apple.akd "Apple ID 缓存" || true
+    safe_clean ~/Library/Caches/com.apple.WebKit.Networking/* "WebKit 网络缓存" || true
+    safe_clean ~/Library/DiagnosticReports/* "诊断报告" || true
+    safe_clean ~/Library/Caches/com.apple.QuickLook.thumbnailcache "QuickLook 缩略图" || true
+    safe_clean ~/Library/Caches/Quick\ Look/* "QuickLook 缓存" || true
+    safe_clean ~/Library/Caches/com.apple.iconservices* "图标服务缓存" || true
     _clean_incomplete_downloads
     # Do not clean ~/Library/Autosave Information by default: it can contain
     # recoverable user documents, not only disposable cache data.
     safe_clean ~/Library/IdentityCaches/* "Identity caches" || true
-    safe_clean ~/Library/Suggestions/* "Siri suggestions cache" || true
-    safe_clean ~/Library/Calendars/Calendar\ Cache "Calendar cache" || true
-    safe_clean ~/Library/Application\ Support/AddressBook/Sources/*/Photos.cache "Address Book photo cache" || true
+    safe_clean ~/Library/Suggestions/* "Siri 建议缓存" || true
+    safe_clean ~/Library/Calendars/Calendar\ Cache "日历缓存" || true
+    safe_clean ~/Library/Application\ Support/AddressBook/Sources/*/Photos.cache "通讯录照片缓存" || true
     clean_support_app_data
 
     # Stop initial scan indicator before entering per-group scans.
     stop_section_spinner
 
     # Sandboxed app caches
-    safe_clean ~/Library/Containers/com.apple.wallpaper.agent/Data/Library/Caches/* "Wallpaper agent cache"
-    safe_clean ~/Library/Containers/com.apple.mediaanalysisd/Data/Library/Caches/* "Media analysis cache"
-    safe_clean ~/Library/Containers/com.apple.mediaanalysisd/Data/tmp/* "Media analysis temp files"
-    safe_clean ~/Library/Containers/com.apple.AppStore/Data/Library/Caches/* "App Store cache"
-    safe_clean ~/Library/Containers/com.apple.configurator.xpc.InternetService/Data/tmp/* "Apple Configurator temp files"
-    safe_clean ~/Library/Containers/com.apple.wallpaper.extension.aerials/Data/tmp/* "Wallpaper aerials temp files"
-    safe_clean ~/Library/Containers/com.apple.geod/Data/tmp/* "Geod temp files"
-    safe_clean ~/Library/Containers/com.apple.stocks/Data/Library/Caches/* "Stocks cache"
-    safe_clean ~/Library/Application\ Support/com.apple.wallpaper/aerials/thumbnails/* "Wallpaper aerials thumbnails"
-    safe_clean ~/Library/Caches/com.apple.helpd/* "macOS Help system cache"
-    safe_clean ~/Library/Caches/GeoServices/* "Maps geo tile cache"
-    safe_clean ~/Library/Containers/com.apple.AvatarUI.AvatarPickerMemojiPicker/Data/Library/Caches/* "Memoji picker cache"
-    safe_clean ~/Library/Containers/com.apple.AMPArtworkAgent/Data/Library/Caches/* "Music album art cache"
-    safe_clean ~/Library/Containers/com.apple.CoreDevice.CoreDeviceService/Data/Library/Caches/* "CoreDevice service cache"
-    safe_clean ~/Library/Containers/com.apple.NeptuneOneExtension/Data/Library/Caches/* "Apple Intelligence extension cache"
-    safe_clean ~/Library/Containers/com.apple.AppleMediaServicesUI.UtilityExtension/Data/tmp/* "Apple Media Services temp files"
-    safe_clean ~/Library/Caches/com.apple.AppleMediaServices/* "Apple Media Services cache"
-    safe_clean ~/Library/Caches/com.apple.duetexpertd/* "Duet Expert cache"
-    safe_clean ~/Library/Caches/com.apple.parsecd/* "Parsecd cache"
-    safe_clean ~/Library/Caches/com.apple.python/* "Apple Python cache"
-    safe_clean ~/Library/Caches/com.apple.e5rt.e5bundlecache/* "Apple Intelligence runtime cache"
+    safe_clean ~/Library/Containers/com.apple.wallpaper.agent/Data/Library/Caches/* "壁纸代理缓存"
+    safe_clean ~/Library/Containers/com.apple.mediaanalysisd/Data/Library/Caches/* "媒体分析缓存"
+    safe_clean ~/Library/Containers/com.apple.mediaanalysisd/Data/tmp/* "媒体分析临时文件"
+    safe_clean ~/Library/Containers/com.apple.AppStore/Data/Library/Caches/* "App Store 缓存"
+    safe_clean ~/Library/Containers/com.apple.configurator.xpc.InternetService/Data/tmp/* "Apple Configurator 临时文件"
+    safe_clean ~/Library/Containers/com.apple.wallpaper.extension.aerials/Data/tmp/* "壁纸航拍临时文件"
+    safe_clean ~/Library/Containers/com.apple.geod/Data/tmp/* "Geod 临时文件"
+    safe_clean ~/Library/Containers/com.apple.stocks/Data/Library/Caches/* "股市缓存"
+    safe_clean ~/Library/Application\ Support/com.apple.wallpaper/aerials/thumbnails/* "壁纸航拍缩略图"
+    safe_clean ~/Library/Caches/com.apple.helpd/* "macOS 帮助系统缓存"
+    safe_clean ~/Library/Caches/GeoServices/* "地图地理缓存"
+    safe_clean ~/Library/Containers/com.apple.AvatarUI.AvatarPickerMemojiPicker/Data/Library/Caches/* "Memoji 选择器缓存"
+    safe_clean ~/Library/Containers/com.apple.AMPArtworkAgent/Data/Library/Caches/* "音乐专辑封面缓存"
+    safe_clean ~/Library/Containers/com.apple.CoreDevice.CoreDeviceService/Data/Library/Caches/* "CoreDevice 服务缓存"
+    safe_clean ~/Library/Containers/com.apple.NeptuneOneExtension/Data/Library/Caches/* "Apple Intelligence 扩展缓存"
+    safe_clean ~/Library/Containers/com.apple.AppleMediaServicesUI.UtilityExtension/Data/tmp/* "Apple 媒体服务临时文件"
+    safe_clean ~/Library/Caches/com.apple.AppleMediaServices/* "Apple 媒体服务缓存"
+    safe_clean ~/Library/Caches/com.apple.duetexpertd/* "Duet Expert 缓存"
+    safe_clean ~/Library/Caches/com.apple.parsecd/* "Parsecd 缓存"
+    safe_clean ~/Library/Caches/com.apple.python/* "Apple Python 缓存"
+    safe_clean ~/Library/Caches/com.apple.e5rt.e5bundlecache/* "Apple Intelligence 运行时缓存"
     local containers_dir="$HOME/Library/Containers"
     [[ ! -d "$containers_dir" ]] && return 0
     start_section_spinner "Scanning sandboxed apps..."
@@ -1283,9 +1286,9 @@ clean_external_volume_target() {
 
 # Browser caches (Safari/Chrome/Edge/Firefox).
 clean_browsers() {
-    safe_clean ~/Library/Caches/com.apple.Safari/* "Safari cache"
+    safe_clean ~/Library/Caches/com.apple.Safari/* "Safari cache (Safari 缓存)"
     # Chrome/Chromium.
-    safe_clean ~/Library/Caches/Google/Chrome/* "Chrome cache"
+    safe_clean ~/Library/Caches/Google/Chrome/* "Chrome 缓存"
     # Do not clean Chromium Service Worker ScriptCache. Even when the browser is
     # closed, removing MV3 extension bytecode can break extension service
     # workers and trigger security warnings during dry-run scans. See #785,
@@ -1293,19 +1296,19 @@ clean_browsers() {
     local _chrome_running=false
     pgrep -x "Google Chrome" > /dev/null 2>&1 && _chrome_running=true
     if [[ "$_chrome_running" != "true" ]]; then
-        safe_clean ~/Library/Application\ Support/Google/Chrome/*/Application\ Cache/* "Chrome app cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/*/Code\ Cache/* "Chrome code cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/*/GPUCache/* "Chrome GPU cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/*/DawnCache/* "Chrome Dawn cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/*/GrShaderCache/* "Chrome GR shader cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/*/GraphiteDawnCache/* "Chrome Graphite Dawn cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/component_crx_cache/* "Chrome component CRX cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/ShaderCache/* "Chrome shader cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/GrShaderCache/* "Chrome GR shader cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/GraphiteDawnCache/* "Chrome Dawn cache"
-        safe_clean ~/Library/Application\ Support/Google/Chrome/Crashpad/completed/* "Chrome crash reports"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/*/Application\ Cache/* "Chrome 应用缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/*/Code\ Cache/* "Chrome 代码缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/*/GPUCache/* "Chrome GPU 缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/*/DawnCache/* "Chrome Dawn 缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/*/GrShaderCache/* "Chrome GR 着色器缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/*/GraphiteDawnCache/* "Chrome Graphite Dawn 缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/component_crx_cache/* "Chrome component CRX 缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/ShaderCache/* "Chrome 着色器缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/GrShaderCache/* "Chrome GR 着色器缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/GraphiteDawnCache/* "Chrome Dawn 缓存"
+        safe_clean ~/Library/Application\ Support/Google/Chrome/Crashpad/completed/* "Chrome 崩溃报告"
     else
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Chrome is running · Application Support cache cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Chrome 正在运行 · Application Support 缓存清理已跳过"
     fi
     local _chrome_profile
     for _chrome_profile in "$HOME/Library/Application Support/Google/Chrome"/*/; do
@@ -1399,7 +1402,7 @@ clean_browsers() {
         firefox_running=true
     fi
     if [[ "$firefox_running" == "true" ]]; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox is running · cache cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox 正在运行 · 缓存清理已跳过"
     else
         safe_clean ~/Library/Caches/Firefox/* "Firefox cache"
     fi
@@ -1429,7 +1432,7 @@ clean_browsers() {
     safe_clean ~/Library/Caches/com.kagi.kagimacOS/* "Orion cache"
     safe_clean ~/Library/Caches/zen/* "Zen cache"
     if [[ "$firefox_running" == "true" ]]; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox is running · profile cache cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox 正在运行 · 个人资料缓存清理已跳过"
     else
         safe_clean ~/Library/Application\ Support/Firefox/Profiles/*/cache2/* "Firefox profile cache"
     fi
