@@ -23,13 +23,13 @@ check_tcc_permissions() {
     fi
     if [[ "$needs_permission_check" == "true" ]]; then
         echo ""
-        echo -e "${BLUE}First-time setup${NC}"
-        echo -e "${GRAY}macOS will request permissions to access Library folders.${NC}"
-        echo -e "${GRAY}You may see ${GREEN}${#tcc_dirs[@]} permission dialogs${NC}${GRAY}, please approve them all.${NC}"
+        echo -e "${BLUE}首次设置${NC}"
+        echo -e "${GRAY}macOS 将请求访问 Library 文件夹的权限。${NC}"
+        echo -e "${GRAY}您可能会看到 ${GREEN}${#tcc_dirs[@]} 个权限对话框${NC}${GRAY}，请全部批准。${NC}"
         echo ""
         echo -ne "${PURPLE}${ICON_ARROW}${NC} Press ${GREEN}Enter${NC} to continue: "
         read -r
-        MOLE_SPINNER_PREFIX="" start_inline_spinner "Requesting permissions..."
+        MOLE_SPINNER_PREFIX="" start_inline_spinner "正在请求权限..."
         # Touch each directory to trigger prompts without deep scanning.
         for dir in "${tcc_dirs[@]}"; do
             [[ -d "$dir" ]] && command find "$dir" -maxdepth 1 -type d > /dev/null 2>&1
@@ -87,7 +87,7 @@ clean_service_worker_cache() {
         fi
         note_activity
         if [[ "$spinner_was_running" == "true" ]]; then
-            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Scanning browser Service Worker caches..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在扫描浏览器 Service Worker 缓存..."
         fi
     fi
 }
@@ -227,7 +227,7 @@ clean_project_caches() {
 
     if [[ -t 1 ]]; then
         MOLE_SPINNER_PREFIX="  "
-        start_inline_spinner "Searching project caches..."
+        start_inline_spinner "正在搜索项目缓存..."
     fi
 
     local -a _scan_pids=()

@@ -5,7 +5,7 @@ set -euo pipefail
 clean_deep_system() {
     stop_section_spinner
     local cache_cleaned=0
-    start_section_spinner "Cleaning system caches..."
+    start_section_spinner "正在清理系统缓存..."
     # Optimized: Single pass for /Library/Caches (3 patterns in 1 scan)
     if sudo test -d "/Library/Caches" 2> /dev/null; then
         while IFS= read -r -d '' file; do
@@ -23,7 +23,7 @@ clean_deep_system() {
     fi
     stop_section_spinner
     [[ $cache_cleaned -eq 1 ]] && log_success "System caches (系统缓存)"
-    start_section_spinner "Cleaning system temporary files..."
+    start_section_spinner "正在清理系统临时文件..."
     local tmp_cleaned=0
     local -a sys_temp_dirs=("/private/tmp" "/private/var/tmp")
     for tmp_dir in "${sys_temp_dirs[@]}"; do
@@ -35,13 +35,13 @@ clean_deep_system() {
     done
     stop_section_spinner
     [[ $tmp_cleaned -eq 1 ]] && log_success "System temp files (系统临时文件)"
-    start_section_spinner "Cleaning system crash reports..."
+    start_section_spinner "正在清理系统崩溃报告..."
     if sudo find "/Library/Logs/DiagnosticReports" -maxdepth 1 -type f -mtime "+$MOLE_CRASH_REPORT_AGE_DAYS" -print -quit 2> /dev/null | grep -q .; then
         safe_sudo_find_delete "/Library/Logs/DiagnosticReports" "*" "$MOLE_CRASH_REPORT_AGE_DAYS" "f" || true
     fi
     stop_section_spinner
     log_success "System crash reports (系统崩溃报告)"
-    start_section_spinner "Cleaning system logs..."
+    start_section_spinner "正在清理系统日志..."
     if sudo find "/private/var/log" -maxdepth 3 -type f \( -name "*.log" -o -name "*.gz" -o -name "*.asl" \) -mtime "+$MOLE_LOG_AGE_DAYS" -print -quit 2> /dev/null | grep -q .; then
         safe_sudo_find_delete "/private/var/log" "*.log" "$MOLE_LOG_AGE_DAYS" "f" || true
         safe_sudo_find_delete "/private/var/log" "*.gz" "$MOLE_LOG_AGE_DAYS" "f" || true
@@ -49,7 +49,7 @@ clean_deep_system() {
     fi
     stop_section_spinner
     log_success "System logs (系统日志)"
-    start_section_spinner "Cleaning third-party system logs..."
+    start_section_spinner "正在清理第三方系统日志..."
     local -a third_party_log_dirs=(
         "/Library/Logs/Adobe"
         "/Library/Logs/CreativeCloud"
@@ -72,7 +72,7 @@ clean_deep_system() {
     fi
     stop_section_spinner
     [[ $third_party_logs_cleaned -eq 1 ]] && log_success "Third-party system logs (第三方系统日志)"
-    start_section_spinner "Scanning system library updates..."
+    start_section_spinner "正在扫描系统库更新..."
     if [[ -d "/Library/Updates" && ! -L "/Library/Updates" ]]; then
         local updates_cleaned=0
         while IFS= read -r -d '' item; do
@@ -94,7 +94,7 @@ clean_deep_system() {
     else
         stop_section_spinner
     fi
-    start_section_spinner "Scanning macOS installer files..."
+    start_section_spinner "正在扫描 macOS 安装文件..."
     if [[ -d "/macOS Install Data" ]]; then
         local mtime
         mtime=$(get_file_mtime "/macOS Install Data")
@@ -149,7 +149,7 @@ clean_deep_system() {
     done
     stop_section_spinner
     [[ $installer_cleaned -gt 0 ]] && debug_log "Cleaned $installer_cleaned macOS installer(s)"
-    start_section_spinner "Scanning browser code signature caches..."
+    start_section_spinner "正在扫描浏览器代码签名缓存..."
     local code_sign_cleaned=0
     while IFS= read -r -d '' cache_dir; do
         if safe_sudo_remove "$cache_dir"; then
@@ -160,18 +160,18 @@ clean_deep_system() {
     [[ $code_sign_cleaned -gt 0 ]] && log_success "Browser code signature caches (浏览器代码签名缓存), $code_sign_cleaned 项"
 
     local diag_base="/private/var/db/diagnostics"
-    start_section_spinner "Cleaning system diagnostic logs..."
+    start_section_spinner "正在清理系统诊断日志..."
     safe_sudo_find_delete "$diag_base" "*" "$MOLE_LOG_AGE_DAYS" "f" || true
     safe_sudo_find_delete "$diag_base" "*.tracev3" "30" "f" || true
     safe_sudo_find_delete "/private/var/db/DiagnosticPipeline" "*" "$MOLE_LOG_AGE_DAYS" "f" || true
     stop_section_spinner
     log_success "System diagnostic logs (系统诊断日志)"
 
-    start_section_spinner "Cleaning power logs..."
+    start_section_spinner "正在清理电源日志..."
     safe_sudo_find_delete "/private/var/db/powerlog" "*" "$MOLE_LOG_AGE_DAYS" "f" || true
     stop_section_spinner
     log_success "Power logs (电源日志)"
-    start_section_spinner "Cleaning memory exception reports..."
+    start_section_spinner "正在清理内存异常报告..."
     local mem_reports_dir="/private/var/db/reportmemoryexception/MemoryLimitViolations"
     local mem_cleaned=0
     if sudo test -d "$mem_reports_dir" 2> /dev/null; then
@@ -212,12 +212,12 @@ clean_deep_system() {
 clean_time_machine_failed_backups() {
     local tm_cleaned=0
     if ! command -v tmutil > /dev/null 2>&1; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No incomplete backups found"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未发现未完成的备份"
         return 0
     fi
     # Fast pre-check: skip entirely if Time Machine is not configured (no tmutil needed)
     if ! defaults read /Library/Preferences/com.apple.TimeMachine AutoBackup 2> /dev/null | grep -qE '^[01]$'; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No incomplete backups found"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未发现未完成的备份"
         return 0
     fi
     start_section_spinner "Checking Time Machine configuration..."
@@ -228,21 +228,21 @@ clean_time_machine_failed_backups() {
         if [[ "$spinner_active" == "true" ]]; then
             stop_section_spinner
         fi
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No incomplete backups found"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未发现未完成的备份"
         return 0
     fi
     if [[ ! -d "/Volumes" ]]; then
         if [[ "$spinner_active" == "true" ]]; then
             stop_section_spinner
         fi
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No incomplete backups found"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未发现未完成的备份"
         return 0
     fi
     if tm_is_running; then
         if [[ "$spinner_active" == "true" ]]; then
             stop_section_spinner
         fi
-        echo -e "  ${YELLOW}!${NC} Time Machine backup in progress, skipping cleanup"
+        echo -e "  ${YELLOW}!${NC} Time Machine 备份正在进行中，已跳过清理"
         return 0
     fi
     if [[ "$spinner_active" == "true" ]]; then
@@ -262,7 +262,7 @@ clean_time_machine_failed_backups() {
         if [[ "$spinner_active" == "true" ]]; then
             stop_section_spinner
         fi
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No incomplete backups found"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未发现未完成的备份"
         return 0
     fi
     if [[ "$spinner_active" == "true" ]]; then
@@ -299,26 +299,26 @@ clean_time_machine_failed_backups() {
                 local size_human
                 size_human=$(bytes_to_human "$((size_kb * 1024))")
                 if [[ "$DRY_RUN" == "true" ]]; then
-                    echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Incomplete backup: $backup_name${NC}, ${YELLOW}$size_human dry${NC}"
+                    echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} 未完成的 Time Machine 备份：$backup_name${NC}，${YELLOW}$size_human 预览${NC}"
                     tm_cleaned=$((tm_cleaned + 1))
                     note_activity
                     continue
                 fi
                 if ! command -v tmutil > /dev/null 2>&1; then
-                    echo -e "  ${YELLOW}!${NC} tmutil not available, skipping: $backup_name"
+                    echo -e "  ${YELLOW}!${NC} tmutil 不可用，已跳过：$backup_name"
                     continue
                 fi
                 if tmutil delete "$inprogress_file" 2> /dev/null; then
                     local line_color
                     line_color=$(cleanup_result_color_kb "$size_kb")
-                    echo -e "  ${line_color}${ICON_SUCCESS}${NC} Incomplete backup: $backup_name${NC}, ${line_color}$size_human${NC}"
+                    echo -e "  ${line_color}${ICON_SUCCESS}${NC} 未完成的 Time Machine 备份：$backup_name${NC}，${line_color}$size_human${NC}"
                     tm_cleaned=$((tm_cleaned + 1))
                     files_cleaned=$((files_cleaned + 1))
                     total_size_cleaned=$((total_size_cleaned + size_kb))
                     total_items=$((total_items + 1))
                     note_activity
                 else
-                    echo -e "  ${YELLOW}!${NC} Could not delete: $backup_name · try manually with sudo"
+                    echo -e "  ${YELLOW}!${NC} 无法删除：$backup_name，请手动使用 sudo 重试"
                 fi
             done < <(run_with_timeout 15 find "$backupdb_dir" -maxdepth 3 -type d \( -name "*.inProgress" -o -name "*.inprogress" \) 2> /dev/null || true)
         fi
@@ -353,7 +353,7 @@ clean_time_machine_failed_backups() {
                     local size_human
                     size_human=$(bytes_to_human "$((size_kb * 1024))")
                     if [[ "$DRY_RUN" == "true" ]]; then
-                        echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Incomplete APFS backup in $bundle_name: $backup_name${NC}, ${YELLOW}$size_human dry${NC}"
+                        echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} $bundle_name 中未完成的 APFS 备份：$backup_name${NC}，${YELLOW}$size_human 预览${NC}"
                         tm_cleaned=$((tm_cleaned + 1))
                         note_activity
                         continue
@@ -364,14 +364,14 @@ clean_time_machine_failed_backups() {
                     if tmutil delete "$inprogress_file" 2> /dev/null; then
                         local line_color
                         line_color=$(cleanup_result_color_kb "$size_kb")
-                        echo -e "  ${line_color}${ICON_SUCCESS}${NC} Incomplete APFS backup in $bundle_name: $backup_name${NC}, ${line_color}$size_human${NC}"
+                        echo -e "  ${line_color}${ICON_SUCCESS}${NC} $bundle_name 中未完成的 APFS 备份：$backup_name${NC}，${line_color}$size_human${NC}"
                         tm_cleaned=$((tm_cleaned + 1))
                         files_cleaned=$((files_cleaned + 1))
                         total_size_cleaned=$((total_size_cleaned + size_kb))
                         total_items=$((total_items + 1))
                         note_activity
                     else
-                        echo -e "  ${YELLOW}!${NC} Could not delete from bundle: $backup_name"
+                        echo -e "  ${YELLOW}!${NC} 无法从备份包中删除：$backup_name"
                     fi
                 done < <(run_with_timeout 15 find "$mounted_path" -maxdepth 3 -type d \( -name "*.inProgress" -o -name "*.inprogress" \) 2> /dev/null || true)
             fi
@@ -381,7 +381,7 @@ clean_time_machine_failed_backups() {
         stop_section_spinner
     fi
     if [[ $tm_cleaned -eq 0 ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No incomplete backups found"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未发现未完成的备份"
     fi
 }
 # Returns 0 if a backup is actively running.
@@ -416,13 +416,13 @@ clean_local_snapshots() {
 
     if [[ $rc_running -eq 2 ]]; then
         stop_section_spinner
-        echo -e "  ${YELLOW}!${NC} Could not determine Time Machine status; skipping snapshot check"
+        echo -e "  ${YELLOW}!${NC} 无法确定 Time Machine 状态，已跳过快照检查"
         return 0
     fi
 
     if [[ $rc_running -eq 0 ]]; then
         stop_section_spinner
-        echo -e "  ${YELLOW}!${NC} Time Machine is active; skipping snapshot check"
+        echo -e "  ${YELLOW}!${NC} Time Machine 正在运行，已跳过快照检查"
         return 0
     fi
 

@@ -2,7 +2,7 @@
 # User Data Cleanup Module
 set -euo pipefail
 clean_user_essentials() {
-    start_section_spinner "Scanning caches..."
+    start_section_spinner "正在扫描缓存..."
     safe_clean ~/Library/Caches/* "User app cache (用户应用缓存)"
     stop_section_spinner
 
@@ -100,7 +100,7 @@ _clean_incomplete_downloads() {
         for f in $pattern; do
             [[ -e "$f" ]] || continue
             if lsof -F n -- "$f" > /dev/null 2>&1; then
-                echo -e "  ${GRAY}${ICON_WARNING}${NC} Skipping active download: $(basename "$f")"
+                echo -e "  ${GRAY}${ICON_WARNING}${NC} 跳过活动中的下载：$(basename "$f")"
                 continue
             fi
             safe_clean "$f" "$label" || true
@@ -124,7 +124,7 @@ _clean_mail_downloads() {
     for target_path in "${mail_dirs[@]}"; do
         if [[ -d "$target_path" ]]; then
             if [[ "$spinner_active" == "false" && -t 1 ]]; then
-                start_section_spinner "Cleaning old Mail attachments..."
+                start_section_spinner "正在清理旧版 Mail 附件..."
                 spinner_active=true
             fi
             local dir_size_kb=0
@@ -157,7 +157,7 @@ _clean_mail_downloads() {
     if [[ $count -gt 0 ]]; then
         local cleaned_mb
         cleaned_mb=$(echo "$cleaned_kb" | awk '{printf "%.1f", $1/1024}' || echo "0.0")
-        echo "  ${GREEN}${ICON_SUCCESS}${NC} Cleaned $count mail attachments, about ${cleaned_mb}MB"
+        echo "  ${GREEN}${ICON_SUCCESS}${NC} 已清理 $count 个邮件附件，约 ${cleaned_mb}MB"
         note_activity
     fi
 }
@@ -171,7 +171,7 @@ clean_chrome_old_versions() {
 
     # Match the exact Chrome process name to avoid false positives
     if pgrep -x "Google Chrome" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Google Chrome running · old versions cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Google Chrome 正在运行 · 跳过旧版本清理"
         return 0
     fi
 
@@ -231,11 +231,11 @@ clean_chrome_old_versions() {
         local size_human
         size_human=$(bytes_to_human "$((total_size * 1024))")
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Chrome old versions${NC}, ${YELLOW}${cleaned_count} dirs, $size_human dry${NC}"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Chrome 旧版本${NC}, ${YELLOW}${cleaned_count} dirs, $size_human 预览${NC}"
         else
             local line_color
             line_color=$(cleanup_result_color_kb "$total_size")
-            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Chrome old versions${NC}, ${line_color}${cleaned_count} dirs, $size_human${NC}"
+            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Chrome 旧版本${NC}, ${line_color}${cleaned_count} dirs, $size_human${NC}"
         fi
         files_cleaned=$((files_cleaned + cleaned_count))
         total_size_cleaned=$((total_size_cleaned + total_size))
@@ -259,7 +259,7 @@ clean_edge_old_versions() {
 
     # Match the exact Edge process name to avoid false positives (e.g., Microsoft Teams)
     if pgrep -x "Microsoft Edge" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge running · old versions cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge 正在运行 · 跳过旧版本清理"
         return 0
     fi
 
@@ -319,11 +319,11 @@ clean_edge_old_versions() {
         local size_human
         size_human=$(bytes_to_human "$((total_size * 1024))")
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Edge old versions${NC}, ${YELLOW}${cleaned_count} dirs, $size_human dry${NC}"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Edge 旧版本${NC}, ${YELLOW}${cleaned_count} dirs, $size_human 预览${NC}"
         else
             local line_color
             line_color=$(cleanup_result_color_kb "$total_size")
-            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Edge old versions${NC}, ${line_color}${cleaned_count} dirs, $size_human${NC}"
+            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Edge 旧版本${NC}, ${line_color}${cleaned_count} dirs, $size_human${NC}"
         fi
         files_cleaned=$((files_cleaned + cleaned_count))
         total_size_cleaned=$((total_size_cleaned + total_size))
@@ -338,7 +338,7 @@ clean_edge_updater_old_versions() {
     [[ -d "$updater_dir" ]] || return 0
 
     if pgrep -x "Microsoft Edge" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge running · updater cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge 正在运行 · 跳过更新程序清理"
         return 0
     fi
 
@@ -383,11 +383,11 @@ clean_edge_updater_old_versions() {
         local size_human
         size_human=$(bytes_to_human "$((total_size * 1024))")
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Edge updater old versions${NC}, ${YELLOW}${cleaned_count} dirs, $size_human dry${NC}"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Edge 更新程序旧版本${NC}, ${YELLOW}${cleaned_count} dirs, $size_human 预览${NC}"
         else
             local line_color
             line_color=$(cleanup_result_color_kb "$total_size")
-            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Edge updater old versions${NC}, ${line_color}${cleaned_count} dirs, $size_human${NC}"
+            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Edge 更新程序旧版本${NC}, ${line_color}${cleaned_count} dirs, $size_human${NC}"
         fi
         files_cleaned=$((files_cleaned + cleaned_count))
         total_size_cleaned=$((total_size_cleaned + total_size))
@@ -425,7 +425,7 @@ scan_external_volumes() {
     local network_count=${#network_volumes[@]}
     if [[ $volume_count -eq 0 ]]; then
         if [[ $network_count -gt 0 ]]; then
-            echo -e "  ${GRAY}${ICON_LIST}${NC} External volumes, ${network_count} network volumes skipped"
+            echo -e "  ${GRAY}${ICON_LIST}${NC} 外部卷，${network_count} 个网络卷已跳过"
             note_activity
         fi
         return 0
@@ -481,7 +481,7 @@ clean_support_app_data() {
 
     # Do not touch Messages attachments, only preview/sticker caches.
     if pgrep -x "Messages" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Messages is running · preview cache cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Messages 正在运行 · 跳过预览缓存清理"
     else
         safe_clean ~/Library/Messages/StickerCache/* "Messages sticker cache (Messages 表情包缓存)"
         safe_clean ~/Library/Messages/Caches/Previews/Attachments/* "Messages preview attachment cache"
@@ -591,21 +591,21 @@ clean_app_caches() {
     if [[ "$found_any" == "true" ]]; then
         if [[ "$DRY_RUN" == "true" ]]; then
             if [[ "$total_size_partial" == "true" ]]; then
-                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Sandboxed app caches${NC}, ${YELLOW}dry${NC}"
+                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} 沙盒应用缓存${NC}, ${YELLOW}预览${NC}"
             else
                 local size_human
                 size_human=$(bytes_to_human "$((total_size * 1024))")
-                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Sandboxed app caches${NC}, ${YELLOW}$size_human dry${NC}"
+                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} 沙盒应用缓存${NC}, ${YELLOW}$size_human 预览${NC}"
             fi
         else
             if [[ "$total_size_partial" == "true" ]]; then
-                echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Sandboxed app caches${NC}, ${GREEN}cleaned${NC}"
+                echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 沙盒应用缓存${NC}, ${GREEN}已清理${NC}"
             else
                 local size_human
                 size_human=$(bytes_to_human "$((total_size * 1024))")
                 local line_color
                 line_color=$(cleanup_result_color_kb "$total_size")
-                echo -e "  ${line_color}${ICON_SUCCESS}${NC} Sandboxed app caches${NC}, ${line_color}$size_human${NC}"
+                echo -e "  ${line_color}${ICON_SUCCESS}${NC} 沙盒应用缓存${NC}, ${line_color}$size_human${NC}"
             fi
         fi
         files_cleaned=$((files_cleaned + cleaned_count))
@@ -789,21 +789,21 @@ clean_group_container_caches() {
     if [[ "$found_any" == "true" ]]; then
         if [[ "$DRY_RUN" == "true" ]]; then
             if [[ "$total_size_partial" == "true" ]]; then
-                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Group Containers logs/caches${NC}, ${YELLOW}dry${NC}"
+                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Group Containers 日志/缓存${NC}, ${YELLOW}预览${NC}"
             else
                 local size_human
                 size_human=$(bytes_to_human "$((total_size * 1024))")
-                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Group Containers logs/caches${NC}, ${YELLOW}$size_human dry${NC}"
+                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Group Containers 日志/缓存${NC}, ${YELLOW}$size_human 预览${NC}"
             fi
         else
             if [[ "$total_size_partial" == "true" ]]; then
-                echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Group Containers logs/caches${NC}, ${GREEN}cleaned${NC}"
+                echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Group Containers 日志/缓存${NC}, ${GREEN}已清理${NC}"
             else
                 local size_human
                 size_human=$(bytes_to_human "$((total_size * 1024))")
                 local line_color
                 line_color=$(cleanup_result_color_kb "$total_size")
-                echo -e "  ${line_color}${ICON_SUCCESS}${NC} Group Containers logs/caches${NC}, ${line_color}$size_human${NC}"
+                echo -e "  ${line_color}${ICON_SUCCESS}${NC} Group Containers 日志/缓存${NC}, ${line_color}$size_human${NC}"
             fi
         fi
         files_cleaned=$((files_cleaned + cleaned_count))
@@ -842,36 +842,36 @@ validate_external_volume_target() {
     resolved_root="${resolved_root%/}"
 
     if [[ -z "$target" ]]; then
-        echo "Missing external volume path" >&2
+        echo "缺少外部卷路径" >&2
         return 1
     fi
     if [[ "$target" != /* ]]; then
-        echo "External volume path must be absolute: $target" >&2
+        echo "外部卷路径必须是绝对路径：$target" >&2
         return 1
     fi
     if [[ "$target" == "$root" || "$target" == "$resolved_root" ]]; then
-        echo "Refusing to clean the volumes root directly: $resolved_root" >&2
+        echo "拒绝直接清理卷根目录：$resolved_root" >&2
         return 1
     fi
     if [[ -L "$target" ]]; then
-        echo "Refusing to clean symlinked volume path: $target" >&2
+        echo "拒绝清理符号链接的卷路径：$target" >&2
         return 1
     fi
 
     local resolved
     resolved=$(resolve_existing_path "$target") || {
-        echo "External volume path does not exist: $target" >&2
+        echo "外部卷路径不存在：$target" >&2
         return 1
     }
 
     if [[ "$resolved" != "$resolved_root/"* ]]; then
-        echo "External volume path must be under $resolved_root: $resolved" >&2
+        echo "外部卷路径必须在 $resolved_root 下：$resolved" >&2
         return 1
     fi
 
     local relative_path="${resolved#"$resolved_root"/}"
     if [[ -z "$relative_path" || "$relative_path" == "$resolved" || "$relative_path" == */* ]]; then
-        echo "External cleanup only supports mounted paths directly under $resolved_root: $resolved" >&2
+        echo "外部清理仅支持 $resolved_root 下的直接挂载路径：$resolved" >&2
         return 1
     fi
 
@@ -879,7 +879,7 @@ validate_external_volume_target() {
     disk_info=$(run_with_timeout 2 command diskutil info "$resolved" 2> /dev/null || echo "")
     if [[ -n "$disk_info" ]]; then
         if echo "$disk_info" | grep -Eq 'Internal:[[:space:]]+Yes'; then
-            echo "Refusing to clean an internal volume: $resolved" >&2
+            echo "拒绝清理内部卷：$resolved" >&2
             return 1
         fi
 
@@ -887,7 +887,7 @@ validate_external_volume_target() {
         protocol=$(echo "$disk_info" | awk -F: '/Protocol:/ {gsub(/^[[:space:]]+/, "", $2); print $2; exit}')
         case "$protocol" in
             SMB | NFS | AFP | CIFS | WebDAV)
-                echo "Refusing to clean network volume protocol $protocol: $resolved" >&2
+                echo "拒绝清理网络卷协议 $protocol：$resolved" >&2
                 return 1
                 ;;
         esac
@@ -968,11 +968,11 @@ clean_external_volume_target() {
         local size_human
         size_human=$(bytes_to_human "$((total_size * 1024))")
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} External volume cleanup${NC}, ${YELLOW}${volume_name}, $size_human dry${NC}"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} 外部卷清理${NC}, ${YELLOW}${volume_name}, $size_human 预览${NC}"
         else
             local line_color
             line_color=$(cleanup_result_color_kb "$total_size")
-            echo -e "  ${line_color}${ICON_SUCCESS}${NC} External volume cleanup${NC}, ${line_color}${volume_name}, $size_human${NC}"
+            echo -e "  ${line_color}${ICON_SUCCESS}${NC} 外部卷清理${NC}, ${line_color}${volume_name}, $size_human${NC}"
         fi
         files_cleaned=$((files_cleaned + cleaned_count))
         total_size_cleaned=$((total_size_cleaned + total_size))
@@ -1019,7 +1019,7 @@ clean_browsers() {
         firefox_running=true
     fi
     if [[ "$firefox_running" == "true" ]]; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox is running · cache cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox 正在运行 · 跳过缓存清理"
     else
         safe_clean ~/Library/Caches/Firefox/* "Firefox cache"
     fi
@@ -1029,7 +1029,7 @@ clean_browsers() {
     safe_clean ~/Library/Caches/com.kagi.kagimacOS/* "Orion cache"
     safe_clean ~/Library/Caches/zen/* "Zen cache"
     if [[ "$firefox_running" == "true" ]]; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox is running · profile cache cleanup skipped"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox 正在运行 · 跳过个人资料缓存清理"
     else
         safe_clean ~/Library/Application\ Support/Firefox/Profiles/*/cache2/* "Firefox profile cache"
     fi
@@ -1130,7 +1130,7 @@ app_support_item_size_bytes() {
 clean_application_support_logs() {
     if [[ ! -d "$HOME/Library/Application Support" ]] || ! ls "$HOME/Library/Application Support" > /dev/null 2>&1; then
         note_activity
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Skipped: No permission to access Application Support"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} 跳过：无法访问 Application Support"
         return 0
     fi
     start_section_spinner "Scanning Application Support..."
@@ -1347,17 +1347,17 @@ clean_application_support_logs() {
         local total_size_kb=$(((total_size_bytes + 1023) / 1024))
         if [[ "$DRY_RUN" == "true" ]]; then
             if [[ "$total_size_partial" == "true" ]]; then
-                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Application Support logs/caches${NC}, ${YELLOW}at least $size_human dry${NC}"
+                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Application Support 日志/缓存${NC}, ${YELLOW}至少 $size_human 预览${NC}"
             else
-                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Application Support logs/caches${NC}, ${YELLOW}$size_human dry${NC}"
+                echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Application Support 日志/缓存${NC}, ${YELLOW}$size_human 预览${NC}"
             fi
         else
             local line_color
             line_color=$(cleanup_result_color_kb "$total_size_kb")
             if [[ "$total_size_partial" == "true" ]]; then
-                echo -e "  ${line_color}${ICON_SUCCESS}${NC} Application Support logs/caches${NC}, ${line_color}at least $size_human${NC}"
+                echo -e "  ${line_color}${ICON_SUCCESS}${NC} Application Support 日志/缓存${NC}, ${line_color}至少 $size_human${NC}"
             else
-                echo -e "  ${line_color}${ICON_SUCCESS}${NC} Application Support logs/caches${NC}, ${line_color}$size_human${NC}"
+                echo -e "  ${line_color}${ICON_SUCCESS}${NC} Application Support 日志/缓存${NC}, ${line_color}$size_human${NC}"
             fi
         fi
         files_cleaned=$((files_cleaned + cleaned_count))
@@ -1397,7 +1397,7 @@ check_large_file_candidates() {
         if [[ "$mail_kb" -ge "$threshold_kb" ]]; then
             local mail_human
             mail_human=$(bytes_to_human "$((mail_kb * 1024))")
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Mail data: ${GREEN}${mail_human}${NC}${GRAY}, Path: $mail_dir${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Mail 数据：${GREEN}${mail_human}${NC}${GRAY}，路径：$mail_dir${NC}"
             found_any=true
         fi
     fi
@@ -1409,7 +1409,7 @@ check_large_file_candidates() {
         if [[ "$downloads_kb" -ge "$threshold_kb" ]]; then
             local downloads_human
             downloads_human=$(bytes_to_human "$((downloads_kb * 1024))")
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Mail downloads: ${GREEN}${downloads_human}${NC}${GRAY}, Path: $mail_downloads${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Mail 下载：${GREEN}${downloads_human}${NC}${GRAY}，路径：$mail_downloads${NC}"
             found_any=true
         fi
     fi
@@ -1447,7 +1447,7 @@ check_large_file_candidates() {
         if [[ -n "$snapshot_list" ]]; then
             snapshot_count=$(echo "$snapshot_list" | { grep -Eo 'com\.apple\.TimeMachine\.[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6}' || true; } | wc -l | awk '{print $1}')
             if [[ "$snapshot_count" =~ ^[0-9]+$ && "$snapshot_count" -gt 0 ]]; then
-                echo -e "  ${YELLOW}${ICON_WARNING}${NC} Time Machine local snapshots: ${GREEN}${snapshot_count}${NC}"
+                echo -e "  ${YELLOW}${ICON_WARNING}${NC} Time Machine 本地快照：${GREEN}${snapshot_count}${NC}"
                 echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}Review: tmutil listlocalsnapshots /${NC}"
                 found_any=true
             fi
@@ -1458,7 +1458,7 @@ check_large_file_candidates() {
         local docker_output
         docker_output=$(run_with_timeout 3 docker system df --format '{{.Type}}\t{{.Size}}\t{{.Reclaimable}}' 2> /dev/null || true)
         if [[ -n "$docker_output" ]]; then
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Docker storage:"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Docker 存储："
             while IFS=$'\t' read -r dtype dsize dreclaim; do
                 [[ -z "$dtype" ]] && continue
                 echo -e "    ${GRAY}${ICON_LIST} $dtype: $dsize, Reclaimable: $dreclaim${NC}"
@@ -1467,7 +1467,7 @@ check_large_file_candidates() {
         else
             docker_output=$(run_with_timeout 3 docker system df 2> /dev/null || true)
             if [[ -n "$docker_output" ]]; then
-                echo -e "  ${YELLOW}${ICON_WARNING}${NC} Docker storage:"
+                echo -e "  ${YELLOW}${ICON_WARNING}${NC} Docker 存储："
                 echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}Run: docker system df${NC}"
                 found_any=true
             fi
@@ -1475,7 +1475,7 @@ check_large_file_candidates() {
     fi
 
     if [[ "$found_any" == "false" ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No large items detected in common locations"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 在常见位置未检测到大文件"
     fi
 
     note_activity

@@ -25,7 +25,7 @@ source "$SCRIPT_DIR/lib/manage/whitelist.sh"
 
 print_header() {
     printf '\n'
-    echo -e "${PURPLE_BOLD}Optimize and Check${NC}"
+    echo -e "${PURPLE_BOLD}优化和检查${NC}"
 }
 
 # Bash-native JSON parsing helpers (no jq dependency).
@@ -145,8 +145,8 @@ show_optimization_summary() {
 
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
         summary_title="预览完成，未做任何修改"
-        summary_details+=("Would apply ${YELLOW}${total_applied:-0}${NC} optimizations")
-        summary_details+=("Run without ${YELLOW}--dry-run${NC} to apply these changes")
+        summary_details+=("将应用 ${YELLOW}${total_applied:-0}${NC} 项优化")
+        summary_details+=("不使用 ${YELLOW}--dry-run${NC} 参数以应用这些更改")
     else
         summary_title="优化和检查完成"
 
@@ -158,32 +158,32 @@ show_optimization_summary() {
 
         if [[ "$cache_kb" =~ ^[0-9]+$ ]] && [[ "$cache_kb" -gt 0 ]]; then
             local cache_human=$(bytes_to_human "$((cache_kb * 1024))")
-            stats+=("${cache_human} cache cleaned")
+            stats+=("${cache_human} 缓存已清理")
         fi
 
         if [[ "$db_count" =~ ^[0-9]+$ ]] && [[ "$db_count" -gt 0 ]]; then
-            stats+=("${db_count} databases optimized")
+            stats+=("${db_count} 个数据库已优化")
         fi
 
         if [[ "$config_count" =~ ^[0-9]+$ ]] && [[ "$config_count" -gt 0 ]]; then
-            stats+=("${config_count} configs repaired")
+            stats+=("${config_count} 个配置已修复")
         fi
 
         # Build first summary line with most important stat only
         local key_stat=""
         if [[ "$cache_kb" =~ ^[0-9]+$ ]] && [[ "$cache_kb" -gt 0 ]]; then
             local cache_human=$(bytes_to_human "$((cache_kb * 1024))")
-            key_stat="${cache_human} cache cleaned"
+            key_stat="${cache_human} 缓存已清理"
         elif [[ "$db_count" =~ ^[0-9]+$ ]] && [[ "$db_count" -gt 0 ]]; then
-            key_stat="${db_count} databases optimized"
+            key_stat="${db_count} 个数据库已优化"
         elif [[ "$config_count" =~ ^[0-9]+$ ]] && [[ "$config_count" -gt 0 ]]; then
-            key_stat="${config_count} configs repaired"
+            key_stat="${config_count} 个配置已修复"
         fi
 
         if [[ -n "$key_stat" ]]; then
-            summary_details+=("Applied ${GREEN}${total_applied:-0}${NC} optimizations, ${key_stat}")
+            summary_details+=("已应用 ${GREEN}${total_applied:-0}${NC} 项优化，${key_stat}")
         else
-            summary_details+=("Applied ${GREEN}${total_applied:-0}${NC} optimizations, all services tuned")
+            summary_details+=("已应用 ${GREEN}${total_applied:-0}${NC} 项优化，所有服务已调优")
         fi
 
         local summary_line3=""
@@ -196,7 +196,7 @@ show_optimization_summary() {
             fi
             summary_details+=("$summary_line3")
         fi
-        summary_details+=("System fully optimized")
+        summary_details+=("系统已完全优化")
     fi
 
     print_summary_block "$summary_title" "${summary_details[@]}"
@@ -219,7 +219,7 @@ show_system_health() {
     disk_percent=${disk_percent:-0}
     uptime=${uptime:-0}
 
-    printf "${ICON_ADMIN} System  %.0f/%.0f GB RAM | %.0f/%.0f GB Disk | Uptime %.0fd\n" \
+    printf "${ICON_ADMIN} 系统  %.0f/%.0f GB 内存 | %.0f/%.0f GB 磁盘 | 运行时长 %.0f 天\n" \
         "$mem_used" "$mem_total" "$disk_used" "$disk_total" "$uptime"
 }
 
@@ -265,7 +265,7 @@ cleanup_path() {
         return
     fi
     if should_protect_path "$expanded_path"; then
-        echo -e "${GRAY}${ICON_WARNING}${NC} Protected $label"
+        echo -e "${GRAY}${ICON_WARNING}${NC} 已保护 $label"
         return
     fi
 
@@ -279,7 +279,7 @@ cleanup_path() {
     local removed=false
     if safe_remove "$expanded_path" true; then
         removed=true
-    elif request_sudo_access "Removing $label requires admin access"; then
+    elif request_sudo_access "删除 $label 需要管理员权限"; then
         if safe_sudo_remove "$expanded_path"; then
             removed=true
         fi
@@ -292,8 +292,8 @@ cleanup_path() {
             echo -e "${GREEN}${ICON_SUCCESS}${NC} $label"
         fi
     else
-        echo -e "${GRAY}${ICON_WARNING}${NC} Skipped $label${NC}"
-        echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}Grant Full Disk Access to your terminal, then retry${NC}"
+        echo -e "${GRAY}${ICON_WARNING}${NC} 已跳过 $label${NC}"
+        echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}请在系统设置中为终端授予完全磁盘访问权限后重试${NC}"
     fi
 }
 
@@ -309,14 +309,14 @@ collect_security_fix_actions() {
     SECURITY_FIXES=()
     if [[ "${FIREWALL_DISABLED:-}" == "true" ]]; then
         if ! is_whitelisted "firewall"; then
-            SECURITY_FIXES+=("firewall|Enable macOS firewall")
+            SECURITY_FIXES+=("firewall|启用 macOS 防火墙")
         fi
     fi
     # Gatekeeper state is intentionally user-managed. Optimize may report it,
     # but it must not change the user's "Anywhere" preference.
     if touchid_supported && ! touchid_configured; then
         if ! is_whitelisted "check_touchid"; then
-            SECURITY_FIXES+=("touchid|Enable Touch ID for sudo")
+            SECURITY_FIXES+=("touchid|启用 Touch ID sudo 身份验证")
         fi
     fi
 
@@ -329,19 +329,19 @@ ask_for_security_fixes() {
     fi
 
     echo ""
-    echo -e "${BLUE}SECURITY FIXES${NC}"
+    echo -e "${BLUE}安全修复${NC}"
     for entry in "${SECURITY_FIXES[@]}"; do
         IFS='|' read -r _ label <<< "$entry"
         echo -e "  ${ICON_LIST} $label"
     done
     echo ""
     export MOLE_SECURITY_FIXES_SHOWN=true
-    echo -ne "${GRAY}${ICON_REVIEW}${NC} ${YELLOW}Apply now?${NC} ${GRAY}Enter confirm / Space cancel${NC}: "
+    echo -ne "${GRAY}${ICON_REVIEW}${NC} ${YELLOW}现在应用？${NC} ${GRAY}回车 确认 / 空格 取消${NC}: "
 
     local key
     if ! key=$(read_key); then
         export MOLE_SECURITY_FIXES_SKIPPED=true
-        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Security fixes skipped"
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} 安全修复已跳过"
         echo ""
         return 1
     fi
@@ -351,7 +351,7 @@ ask_for_security_fixes() {
         return 0
     else
         export MOLE_SECURITY_FIXES_SKIPPED=true
-        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Security fixes skipped"
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} 安全修复已跳过"
         echo ""
         return 1
     fi
@@ -359,17 +359,17 @@ ask_for_security_fixes() {
 
 apply_firewall_fix() {
     if sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate on > /dev/null 2>&1; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Firewall enabled"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 防火墙已启用"
         FIREWALL_DISABLED=false
         return 0
     fi
-    echo -e "  ${GRAY}${ICON_WARNING}${NC} Failed to enable firewall, check permissions"
+    echo -e "  ${GRAY}${ICON_WARNING}${NC} 启用防火墙失败，请检查权限"
     return 1
 }
 
 apply_gatekeeper_fix() {
     if sudo spctl --master-enable 2> /dev/null; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Gatekeeper enabled"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Gatekeeper 已启用"
         GATEKEEPER_DISABLED=false
         return 0
     fi
@@ -385,8 +385,8 @@ apply_touchid_fix() {
 }
 
 perform_security_fixes() {
-    if ! ensure_sudo_session "Security changes require admin access"; then
-        echo -e "${GRAY}${ICON_WARNING}${NC} Skipped security fixes, sudo denied"
+    if ! ensure_sudo_session "安全修复需要管理员权限"; then
+        echo -e "${GRAY}${ICON_WARNING}${NC} 已跳过安全修复，sudo 权限被拒绝"
         return 1
     fi
 
@@ -404,7 +404,7 @@ perform_security_fixes() {
     done
 
     if ((applied > 0)); then
-        log_success "Security settings updated"
+        log_success "安全设置已更新"
     fi
     SECURITY_FIXES=()
 }
@@ -458,12 +458,12 @@ main() {
 
     # Dry-run indicator.
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, No files will be modified\n"
+        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}，不会修改任何文件\n"
     fi
 
     if ! command -v bc > /dev/null 2>&1; then
-        echo -e "${YELLOW}${ICON_ERROR}${NC} Missing dependency: bc"
-        echo -e "${GRAY}Install with: ${GREEN}brew install bc${NC}"
+        echo -e "${YELLOW}${ICON_ERROR}${NC} 缺少依赖：bc"
+        echo -e "${GRAY}请使用：${GREEN}brew install bc${NC} 安装"
         exit 1
     fi
 
@@ -476,7 +476,7 @@ main() {
             stop_inline_spinner
         fi
         echo ""
-        log_error "Failed to collect system health data"
+        log_error "收集系统健康数据失败"
         exit 1
     fi
 
@@ -485,8 +485,8 @@ main() {
             stop_inline_spinner
         fi
         echo ""
-        log_error "Invalid system health data format"
-        echo -e "${GRAY}${ICON_REVIEW}${NC} Check if awk, sysctl, and df commands are available"
+        log_error "无效的系统健康数据格式"
+        echo -e "${GRAY}${ICON_REVIEW}${NC} 请检查 awk、sysctl 和 df 命令是否可用"
         exit 1
     fi
 

@@ -9,7 +9,7 @@ clean_tool_cache() {
     if [[ "$DRY_RUN" != "true" ]]; then
         local command_succeeded=false
         if [[ -t 1 ]]; then
-            start_section_spinner "Cleaning $description..."
+            start_section_spinner "正在清理 $description..."
         fi
         if "$@" > /dev/null 2>&1; then
             command_succeeded=true
@@ -21,7 +21,7 @@ clean_tool_cache() {
             echo -e "  ${GREEN}${ICON_SUCCESS}${NC} $description"
         fi
     else
-        echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} $description · would clean"
+        echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} $description · 将清理"
     fi
     return 0
 }
@@ -33,7 +33,7 @@ clean_dev_npm() {
     if command -v npm > /dev/null 2>&1; then
         clean_tool_cache "npm cache (npm 缓存)" npm cache clean --force
 
-        start_section_spinner "Checking npm cache path..."
+        start_section_spinner "正在检查 npm 缓存路径..."
         npm_cache_path=$(run_with_timeout 2 npm config get cache 2> /dev/null) || npm_cache_path=""
         stop_section_spinner
 
@@ -77,7 +77,7 @@ clean_dev_npm() {
     if command -v pnpm > /dev/null 2>&1 && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm --version > /dev/null 2>&1; then
         COREPACK_ENABLE_DOWNLOAD_PROMPT=0 clean_tool_cache "pnpm cache (pnpm 缓存)" pnpm store prune
         local pnpm_store_path
-        start_section_spinner "Checking store path..."
+        start_section_spinner "正在检查存储路径..."
         pnpm_store_path=$(COREPACK_ENABLE_DOWNLOAD_PROMPT=0 run_with_timeout 2 pnpm store path 2> /dev/null) || pnpm_store_path=""
         stop_section_spinner
         if [[ -n "$pnpm_store_path" && "$pnpm_store_path" != "$pnpm_default_store" ]]; then
@@ -107,12 +107,12 @@ clean_dev_python() {
     safe_clean ~/.cache/mypy/* "MyPy cache (MyPy 缓存)"
     safe_clean ~/.pytest_cache/* "Pytest cache (Pytest 缓存)"
     safe_clean ~/.jupyter/runtime/* "Jupyter runtime cache (Jupyter 运行时缓存)"
-    safe_clean ~/.cache/huggingface/* "Hugging Face cache"
-    safe_clean ~/.cache/torch/* "PyTorch cache"
-    safe_clean ~/.cache/tensorflow/* "TensorFlow cache"
-    safe_clean ~/.conda/pkgs/* "Conda packages cache"
-    safe_clean ~/anaconda3/pkgs/* "Anaconda packages cache"
-    safe_clean ~/.cache/wandb/* "Weights & Biases cache"
+    safe_clean ~/.cache/huggingface/* "Hugging Face cache (Hugging Face 缓存)"
+    safe_clean ~/.cache/torch/* "PyTorch cache (PyTorch 缓存)"
+    safe_clean ~/.cache/tensorflow/* "TensorFlow cache (TensorFlow 缓存)"
+    safe_clean ~/.conda/pkgs/* "Conda packages cache (Conda 包缓存)"
+    safe_clean ~/anaconda3/pkgs/* "Anaconda packages cache (Anaconda 包缓存)"
+    safe_clean ~/.cache/wandb/* "Weights & Biases cache (Weights & Biases 缓存)"
 }
 # Go build/module caches.
 clean_dev_go() {
@@ -128,9 +128,9 @@ clean_dev_go() {
 
     if [[ "$build_protected" == "true" && "$mod_protected" == "true" ]]; then
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Go cache · would skip (whitelist)"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Go 缓存 · 将跳过（白名单）"
         else
-            echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Go cache · skipped (whitelist)"
+            echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Go 缓存 · 已跳过（白名单）"
         fi
         return 0
     fi
@@ -139,10 +139,10 @@ clean_dev_go() {
         clean_tool_cache "Go cache (Go 缓存)" bash -c 'go clean -modcache > /dev/null 2>&1 || true; go clean -cache > /dev/null 2>&1 || true'
     elif [[ "$build_protected" == "true" ]]; then
         clean_tool_cache "Go module cache" bash -c 'go clean -modcache > /dev/null 2>&1 || true'
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Go build cache · skipped (whitelist)"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Go 构建缓存 · 已跳过（白名单）"
     else
         clean_tool_cache "Go build cache" bash -c 'go clean -cache > /dev/null 2>&1 || true'
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Go module cache · skipped (whitelist)"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Go 模块缓存 · 已跳过（白名单）"
     fi
     note_activity
 }
@@ -174,12 +174,12 @@ clean_dev_mise() {
             clean_tool_cache "mise cache" bash -c 'mise cache clear > /dev/null 2>&1 || true'
             note_activity
         else
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} mise cache · would clean"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} mise cache · 将清理"
             note_activity
         fi
     fi
 
-    safe_clean "$mise_cache_path"/* "mise cache"
+    safe_clean "$mise_cache_path"/* "mise cache (mise 缓存)"
 }
 # Rust/cargo caches.
 clean_dev_rust() {
@@ -226,7 +226,7 @@ check_rust_toolchains() {
 clean_dev_docker() {
     if command -v docker > /dev/null 2>&1; then
         if [[ "$DRY_RUN" != "true" ]]; then
-            start_section_spinner "Checking Docker daemon..."
+            start_section_spinner "正在检查 Docker 守护进程..."
             local docker_running=false
             if run_with_timeout 3 docker info > /dev/null 2>&1; then
                 docker_running=true
@@ -236,18 +236,18 @@ clean_dev_docker() {
                 # Remove unused images, stopped containers, unused networks, and
                 # anonymous volumes in one pass. This maps better to the large
                 # reclaimable "docker system df" buckets users typically see.
-                clean_tool_cache "Docker unused data" docker system prune -af --volumes
+                clean_tool_cache "Docker unused data (Docker 未使用数据)" docker system prune -af --volumes
             else
-                echo -e "  ${GRAY}${ICON_WARNING}${NC} Docker unused data · skipped (daemon not running)"
+                echo -e "  ${GRAY}${ICON_WARNING}${NC} Docker 未使用数据 · 已跳过（守护进程未运行）"
                 note_activity
                 debug_log "Docker daemon not running, skipping Docker cache cleanup"
             fi
         else
             note_activity
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Docker unused data · would clean"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Docker 未使用数据 · 将清理"
         fi
     fi
-    safe_clean ~/.docker/buildx/cache/* "Docker BuildX cache"
+    safe_clean ~/.docker/buildx/cache/* "Docker BuildX cache (Docker BuildX 缓存)"
 }
 # Nix garbage collection.
 clean_dev_nix() {
@@ -255,32 +255,32 @@ clean_dev_nix() {
         if [[ "$DRY_RUN" != "true" ]]; then
             clean_tool_cache "Nix garbage collection" nix-collect-garbage --delete-older-than 30d
         else
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Nix garbage collection · would clean"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Nix 垃圾回收 · 将清理"
         fi
         note_activity
     fi
 }
 # Cloud CLI caches.
 clean_dev_cloud() {
-    safe_clean ~/.kube/cache/* "Kubernetes cache"
-    safe_clean ~/.local/share/containers/storage/tmp/* "Container storage temp"
-    safe_clean ~/.aws/cli/cache/* "AWS CLI cache"
-    safe_clean ~/.config/gcloud/logs/* "Google Cloud logs"
-    safe_clean ~/.azure/logs/* "Azure CLI logs"
+    safe_clean ~/.kube/cache/* "Kubernetes cache (Kubernetes 缓存)"
+    safe_clean ~/.local/share/containers/storage/tmp/* "Container storage temp (容器存储临时文件)"
+    safe_clean ~/.aws/cli/cache/* "AWS CLI cache (AWS CLI 缓存)"
+    safe_clean ~/.config/gcloud/logs/* "Google Cloud logs (Google Cloud 日志)"
+    safe_clean ~/.azure/logs/* "Azure CLI logs (Azure CLI 日志)"
 }
 # Frontend build caches.
 clean_dev_frontend() {
-    safe_clean ~/.cache/typescript/* "TypeScript cache"
-    safe_clean ~/.cache/electron/* "Electron cache"
-    safe_clean ~/.cache/node-gyp/* "node-gyp cache"
-    safe_clean ~/.node-gyp/* "node-gyp build cache"
-    safe_clean ~/.turbo/cache/* "Turbo cache"
-    safe_clean ~/.vite/cache/* "Vite cache"
-    safe_clean ~/.cache/vite/* "Vite global cache"
-    safe_clean ~/.cache/webpack/* "Webpack cache"
-    safe_clean ~/.parcel-cache/* "Parcel cache"
-    safe_clean ~/.cache/eslint/* "ESLint cache"
-    safe_clean ~/.cache/prettier/* "Prettier cache"
+    safe_clean ~/.cache/typescript/* "TypeScript cache (TypeScript 缓存)"
+    safe_clean ~/.cache/electron/* "Electron cache (Electron 缓存)"
+    safe_clean ~/.cache/node-gyp/* "node-gyp cache (node-gyp 缓存)"
+    safe_clean ~/.node-gyp/* "node-gyp build cache (node-gyp 构建缓存)"
+    safe_clean ~/.turbo/cache/* "Turbo cache (Turbo 缓存)"
+    safe_clean ~/.vite/cache/* "Vite cache (Vite 缓存)"
+    safe_clean ~/.cache/vite/* "Vite global cache (Vite 全局缓存)"
+    safe_clean ~/.cache/webpack/* "Webpack cache (Webpack 缓存)"
+    safe_clean ~/.parcel-cache/* "Parcel cache (Parcel 缓存)"
+    safe_clean ~/.cache/eslint/* "ESLint cache (ESLint 缓存)"
+    safe_clean ~/.cache/prettier/* "Prettier cache (Prettier 缓存)"
 }
 # Check for multiple Android NDK versions.
 check_android_ndk() {
@@ -295,7 +295,7 @@ clean_xcode_documentation_cache() {
     [[ -d "$doc_cache_root" ]] || return 0
 
     if pgrep -x "Xcode" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode is running, skipping documentation cache cleanup"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode 正在运行，跳过文档缓存清理"
         note_activity
         return 0
     fi
@@ -343,8 +343,8 @@ clean_xcode_documentation_cache() {
     fi
 
     if ! has_sudo_session; then
-        if ! ensure_sudo_session "Cleaning Xcode documentation cache requires admin access"; then
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode documentation cache cleanup skipped (sudo denied)"
+        if ! ensure_sudo_session "清理 Xcode 文档缓存需要管理员权限"; then
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode 文档缓存清理已跳过（sudo 拒绝）"
             note_activity
             return 0
         fi
@@ -364,17 +364,17 @@ clean_xcode_documentation_cache() {
     done
 
     if [[ $removed_count -gt 0 ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode documentation cache · removed ${removed_count} old indexes"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode 文档缓存 · 已移除 ${removed_count} 个旧索引"
         if [[ $skipped_count -gt 0 ]]; then
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode documentation cache · skipped ${skipped_count} protected items"
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode 文档缓存 · 已跳过 ${skipped_count} 个受保护项目"
         fi
         note_activity
     elif [[ $skipped_count -gt 0 ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode documentation cache · nothing to clean"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode 文档缓存 · 无需清理"
         echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode documentation cache · skipped ${skipped_count} protected items"
         note_activity
     else
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode documentation cache · no items removed"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode 文档缓存 · 未移除任何项目"
         note_activity
     fi
 }
@@ -518,11 +518,11 @@ clean_xcode_simulator_runtime_volumes() {
 
     # Only show scanning message in debug mode; spinner provides visual feedback otherwise
     if [[ "${MO_DEBUG:-0}" == "1" ]]; then
-        echo -e "  ${GRAY}${ICON_LIST}${NC} Xcode runtime volumes · scanning ${#sorted_candidates[@]} entries"
+        echo -e "  ${GRAY}${ICON_LIST}${NC} Xcode 运行时卷 · 正在扫描 ${#sorted_candidates[@]} 个条目"
     fi
     local runtime_scan_spinner=false
     if [[ -t 1 ]]; then
-        start_section_spinner "Scanning Xcode runtime volumes..."
+        start_section_spinner "正在扫描 Xcode 运行时卷..."
         runtime_scan_spinner=true
     fi
 
@@ -633,7 +633,7 @@ clean_xcode_simulator_runtime_volumes() {
     fi
 
     if ! has_sudo_session; then
-        if ! ensure_sudo_session "Cleaning Xcode runtime volumes requires admin access"; then
+        if ! ensure_sudo_session "清理 Xcode 运行时卷需要管理员权限"; then
             echo -e "  ${YELLOW}${ICON_WARNING}${NC} Xcode runtime volumes · skipped (sudo denied)"
             note_activity
             return 0
@@ -721,17 +721,17 @@ clean_dev_mobile() {
 
             if [[ "$DRY_RUN" == "true" ]]; then
                 if ((unavailable_before > 0)); then
-                    echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Xcode unavailable simulators · would clean ${unavailable_before}, ${unavailable_size_human}"
+                    echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) · 将清理 ${unavailable_before}, ${unavailable_size_human}"
                 else
-                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode unavailable simulators · already clean"
+                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) · already clean"
                 fi
             else
                 # Skip if no unavailable simulators
                 if ((unavailable_before == 0)); then
-                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode unavailable simulators · already clean"
+                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) · already clean"
                     note_activity
                 else
-                    start_section_spinner "Checking unavailable simulators..."
+                    start_section_spinner "正在检查不可用的模拟器..."
 
                     # Capture error output for diagnostics
                     local delete_output
@@ -751,11 +751,11 @@ clean_dev_mobile() {
                         if ((removed_unavailable > 0)); then
                             local line_color
                             line_color=$(cleanup_result_color_kb "$unavailable_size_kb")
-                            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Xcode unavailable simulators · removed ${removed_unavailable}, ${line_color}${unavailable_size_human}${NC}"
+                            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) · removed ${removed_unavailable}, ${line_color}${unavailable_size_human}${NC}"
                         else
                             local line_color
                             line_color=$(cleanup_result_color_kb "$unavailable_size_kb")
-                            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Xcode unavailable simulators · cleanup completed, ${line_color}${unavailable_size_human}${NC}"
+                            echo -e "  ${line_color}${ICON_SUCCESS}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) · cleanup completed, ${line_color}${unavailable_size_human}${NC}"
                         fi
                     else
                         stop_section_spinner
@@ -803,16 +803,16 @@ clean_dev_mobile() {
                                 if ((manual_failed == 0)); then
                                     local line_color
                                     line_color=$(cleanup_result_color_kb "$unavailable_size_kb")
-                                    echo -e "  ${line_color}${ICON_SUCCESS}${NC} Xcode unavailable simulators · removed ${manually_removed} (fallback), ${line_color}${unavailable_size_human}${NC}"
+                                    echo -e "  ${line_color}${ICON_SUCCESS}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) · removed ${manually_removed} (fallback), ${line_color}${unavailable_size_human}${NC}"
                                 else
-                                    echo -e "  ${YELLOW}${ICON_WARNING}${NC} Xcode unavailable simulators · partially cleaned ${manually_removed}/${#unavailable_udids[@]}, ${unavailable_size_human}"
+                                    echo -e "  ${YELLOW}${ICON_WARNING}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) · partially cleaned ${manually_removed}/${#unavailable_udids[@]}, ${unavailable_size_human}"
                                 fi
                             else
-                                echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode unavailable simulators cleanup failed${error_hint}"
+                                echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) cleanup failed${error_hint}"
                                 debug_log "simctl delete error: $delete_output"
                             fi
                         else
-                            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode unavailable simulators cleanup failed${error_hint}"
+                            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode unavailable simulators (Xcode 不可用模拟器) cleanup failed${error_hint}"
                             debug_log "simctl delete error: $delete_output"
                         fi
                     fi
@@ -828,22 +828,22 @@ clean_dev_mobile() {
     clean_xcode_device_support ~/Library/Developer/Xcode/watchOS\ DeviceSupport "watchOS DeviceSupport"
     clean_xcode_device_support ~/Library/Developer/Xcode/tvOS\ DeviceSupport "tvOS DeviceSupport"
     # Simulator runtime caches.
-    safe_clean ~/Library/Developer/CoreSimulator/Profiles/Runtimes/*/Contents/Resources/RuntimeRoot/System/Library/Caches/* "Simulator runtime cache"
+    safe_clean ~/Library/Developer/CoreSimulator/Profiles/Runtimes/*/Contents/Resources/RuntimeRoot/System/Library/Caches/* "Simulator runtime cache (模拟器运行时缓存)"
     safe_clean ~/Library/Caches/Google/AndroidStudio*/* "Android Studio cache (Android Studio 缓存)"
     # safe_clean ~/Library/Caches/CocoaPods/* "CocoaPods cache"
     # safe_clean ~/.cache/flutter/* "Flutter cache"
     safe_clean ~/.android/build-cache/* "Android build cache (Android 构建缓存)"
     safe_clean ~/.android/cache/* "Android SDK cache (Android SDK 缓存)"
     safe_clean ~/Library/Developer/Xcode/UserData/IB\ Support/* "Xcode Interface Builder cache (Xcode IB 缓存)"
-    safe_clean ~/.cache/swift-package-manager/* "Swift package manager cache"
+    safe_clean ~/.cache/swift-package-manager/* "Swift package manager cache (Swift 包管理器缓存)"
     # Expo/React Native caches (preserve state.json which contains auth tokens).
     safe_clean ~/.expo/expo-go/* "Expo Go cache (Expo Go 缓存)"
-    safe_clean ~/.expo/android-apk-cache/* "Expo Android APK cache"
-    safe_clean ~/.expo/ios-simulator-app-cache/* "Expo iOS simulator app cache"
-    safe_clean ~/.expo/native-modules-cache/* "Expo native modules cache"
-    safe_clean ~/.expo/schema-cache/* "Expo schema cache"
-    safe_clean ~/.expo/template-cache/* "Expo template cache"
-    safe_clean ~/.expo/versions-cache/* "Expo versions cache"
+    safe_clean ~/.expo/android-apk-cache/* "Expo Android APK cache (Expo Android APK 缓存)"
+    safe_clean ~/.expo/ios-simulator-app-cache/* "Expo iOS simulator app cache (Expo iOS 模拟器应用缓存)"
+    safe_clean ~/.expo/native-modules-cache/* "Expo native modules cache (Expo 原生模块缓存)"
+    safe_clean ~/.expo/schema-cache/* "Expo schema cache (Expo schema 缓存)"
+    safe_clean ~/.expo/template-cache/* "Expo template cache (Expo 模板缓存)"
+    safe_clean ~/.expo/versions-cache/* "Expo versions cache (Expo 版本缓存)"
 }
 # JVM ecosystem caches.
 # Gradle: Respects whitelist, cleaned when not protected via: mo clean --whitelist
@@ -854,8 +854,8 @@ clean_dev_jvm() {
     if declare -f clean_maven_repository > /dev/null 2>&1; then
         clean_maven_repository
     fi
-    safe_clean ~/.sbt/* "SBT cache"
-    safe_clean ~/.ivy2/cache/* "Ivy cache"
+    safe_clean ~/.sbt/* "SBT cache (SBT 缓存)"
+    safe_clean ~/.ivy2/cache/* "Ivy cache (Ivy 缓存)"
     safe_clean ~/.gradle/caches/* "Gradle cache (Gradle 缓存)"
     safe_clean ~/.gradle/daemon/* "Gradle daemon (Gradle 守护进程)"
 }
@@ -955,7 +955,7 @@ clean_dev_jetbrains_toolbox() {
                     idx=$((idx + 1))
                     continue
                 fi
-                safe_clean "$dir_path" "JetBrains Toolbox old IDE version"
+                safe_clean "$dir_path" "JetBrains Toolbox old IDE version (JetBrains Toolbox 旧版 IDE)"
                 note_activity
                 idx=$((idx + 1))
             done
@@ -967,85 +967,85 @@ clean_dev_jetbrains_toolbox() {
 # Other language tool caches.
 clean_dev_other_langs() {
     safe_clean ~/.bundle/cache/* "Ruby Bundler cache (Ruby Bundler 缓存)"
-    safe_clean ~/.composer/cache/* "PHP Composer cache"
-    safe_clean ~/.nuget/packages/* "NuGet packages cache"
+    safe_clean ~/.composer/cache/* "PHP Composer cache (PHP Composer 缓存)"
+    safe_clean ~/.nuget/packages/* "NuGet packages cache (NuGet 包缓存)"
     # safe_clean ~/.pub-cache/* "Dart Pub cache"
-    safe_clean ~/.cache/bazel/* "Bazel cache"
-    safe_clean ~/.cache/zig/* "Zig cache"
-    safe_clean ~/Library/Caches/deno/* "Deno cache"
+    safe_clean ~/.cache/bazel/* "Bazel cache (Bazel 缓存)"
+    safe_clean ~/.cache/zig/* "Zig cache (Zig 缓存)"
+    safe_clean ~/Library/Caches/deno/* "Deno cache (Deno 缓存)"
 }
 # CI/CD and DevOps caches.
 clean_dev_cicd() {
-    safe_clean ~/.cache/terraform/* "Terraform cache"
-    safe_clean ~/.grafana/cache/* "Grafana cache"
-    safe_clean ~/.prometheus/data/wal/* "Prometheus WAL cache"
-    safe_clean ~/.jenkins/workspace/*/target/* "Jenkins workspace cache"
-    safe_clean ~/.cache/gitlab-runner/* "GitLab Runner cache"
-    safe_clean ~/.github/cache/* "GitHub Actions cache"
-    safe_clean ~/.circleci/cache/* "CircleCI cache"
-    safe_clean ~/.sonar/* "SonarQube cache"
+    safe_clean ~/.cache/terraform/* "Terraform cache (Terraform 缓存)"
+    safe_clean ~/.grafana/cache/* "Grafana cache (Grafana 缓存)"
+    safe_clean ~/.prometheus/data/wal/* "Prometheus WAL cache (Prometheus WAL 缓存)"
+    safe_clean ~/.jenkins/workspace/*/target/* "Jenkins workspace cache (Jenkins 工作区缓存)"
+    safe_clean ~/.cache/gitlab-runner/* "GitLab Runner cache (GitLab Runner 缓存)"
+    safe_clean ~/.github/cache/* "GitHub Actions cache (GitHub Actions 缓存)"
+    safe_clean ~/.circleci/cache/* "CircleCI cache (CircleCI 缓存)"
+    safe_clean ~/.sonar/* "SonarQube cache (SonarQube 缓存)"
 }
 # Database tool caches.
 clean_dev_database() {
-    safe_clean ~/Library/Caches/com.sequel-ace.sequel-ace/* "Sequel Ace cache"
-    safe_clean ~/Library/Caches/com.eggerapps.Sequel-Pro/* "Sequel Pro cache"
-    safe_clean ~/Library/Caches/redis-desktop-manager/* "Redis Desktop Manager cache"
-    safe_clean ~/Library/Caches/com.navicat.* "Navicat cache"
-    safe_clean ~/Library/Caches/com.dbeaver.* "DBeaver cache"
-    safe_clean ~/Library/Caches/com.redis.RedisInsight "Redis Insight cache"
+    safe_clean ~/Library/Caches/com.sequel-ace.sequel-ace/* "Sequel Ace cache (Sequel Ace 缓存)"
+    safe_clean ~/Library/Caches/com.eggerapps.Sequel-Pro/* "Sequel Pro cache (Sequel Pro 缓存)"
+    safe_clean ~/Library/Caches/redis-desktop-manager/* "Redis Desktop Manager cache (Redis Desktop Manager 缓存)"
+    safe_clean ~/Library/Caches/com.navicat.* "Navicat cache (Navicat 缓存)"
+    safe_clean ~/Library/Caches/com.dbeaver.* "DBeaver cache (DBeaver 缓存)"
+    safe_clean ~/Library/Caches/com.redis.RedisInsight "Redis Insight cache (Redis Insight 缓存)"
 }
 # API/debugging tool caches.
 clean_dev_api_tools() {
-    safe_clean ~/Library/Caches/com.postmanlabs.mac/* "Postman cache"
-    safe_clean ~/Library/Caches/com.konghq.insomnia/* "Insomnia cache"
-    safe_clean ~/Library/Caches/com.tinyapp.TablePlus/* "TablePlus cache"
-    safe_clean ~/Library/Caches/com.getpaw.Paw/* "Paw API cache"
-    safe_clean ~/Library/Caches/com.charlesproxy.charles/* "Charles Proxy cache"
-    safe_clean ~/Library/Caches/com.proxyman.NSProxy/* "Proxyman cache"
+    safe_clean ~/Library/Caches/com.postmanlabs.mac/* "Postman cache (Postman 缓存)"
+    safe_clean ~/Library/Caches/com.konghq.insomnia/* "Insomnia cache (Insomnia 缓存)"
+    safe_clean ~/Library/Caches/com.tinyapp.TablePlus/* "TablePlus cache (TablePlus 缓存)"
+    safe_clean ~/Library/Caches/com.getpaw.Paw/* "Paw API cache (Paw API 缓存)"
+    safe_clean ~/Library/Caches/com.charlesproxy.charles/* "Charles Proxy cache (Charles Proxy 缓存)"
+    safe_clean ~/Library/Caches/com.proxyman.NSProxy/* "Proxyman cache (Proxyman 缓存)"
 }
 # Misc dev tool caches.
 clean_dev_misc() {
-    safe_clean ~/Library/Caches/com.unity3d.*/* "Unity cache"
-    safe_clean ~/Library/Caches/com.mongodb.compass/* "MongoDB Compass cache"
-    safe_clean ~/Library/Caches/com.figma.Desktop/* "Figma cache"
-    safe_clean ~/Library/Caches/com.github.GitHubDesktop/* "GitHub Desktop cache"
-    safe_clean ~/Library/Caches/SentryCrash/* "Sentry crash reports"
-    safe_clean ~/Library/Caches/KSCrash/* "KSCrash reports"
-    safe_clean ~/Library/Caches/com.crashlytics.data/* "Crashlytics data"
-    safe_clean ~/Library/Application\ Support/Antigravity/Cache/* "Antigravity cache"
-    safe_clean ~/Library/Application\ Support/Antigravity/Code\ Cache/* "Antigravity code cache"
-    safe_clean ~/Library/Application\ Support/Antigravity/GPUCache/* "Antigravity GPU cache"
-    safe_clean ~/Library/Application\ Support/Antigravity/DawnGraphiteCache/* "Antigravity Dawn cache"
-    safe_clean ~/Library/Application\ Support/Antigravity/DawnWebGPUCache/* "Antigravity WebGPU cache"
+    safe_clean ~/Library/Caches/com.unity3d.*/* "Unity cache (Unity 缓存)"
+    safe_clean ~/Library/Caches/com.mongodb.compass/* "MongoDB Compass cache (MongoDB Compass 缓存)"
+    safe_clean ~/Library/Caches/com.figma.Desktop/* "Figma cache (Figma 缓存)"
+    safe_clean ~/Library/Caches/com.github.GitHubDesktop/* "GitHub Desktop cache (GitHub Desktop 缓存)"
+    safe_clean ~/Library/Caches/SentryCrash/* "Sentry crash reports (Sentry 崩溃报告)"
+    safe_clean ~/Library/Caches/KSCrash/* "KSCrash reports (KSCrash 报告)"
+    safe_clean ~/Library/Caches/com.crashlytics.data/* "Crashlytics data (Crashlytics 数据)"
+    safe_clean ~/Library/Application\ Support/Antigravity/Cache/* "Antigravity cache (Antigravity 缓存)"
+    safe_clean ~/Library/Application\ Support/Antigravity/Code\ Cache/* "Antigravity code cache (Antigravity 代码缓存)"
+    safe_clean ~/Library/Application\ Support/Antigravity/GPUCache/* "Antigravity GPU cache (Antigravity GPU 缓存)"
+    safe_clean ~/Library/Application\ Support/Antigravity/DawnGraphiteCache/* "Antigravity Dawn cache (Antigravity Dawn 缓存)"
+    safe_clean ~/Library/Application\ Support/Antigravity/DawnWebGPUCache/* "Antigravity WebGPU cache (Antigravity WebGPU 缓存)"
     # Filo (Electron)
-    safe_clean ~/Library/Application\ Support/Filo/production/Cache/* "Filo cache"
-    safe_clean ~/Library/Application\ Support/Filo/production/Code\ Cache/* "Filo code cache"
-    safe_clean ~/Library/Application\ Support/Filo/production/GPUCache/* "Filo GPU cache"
-    safe_clean ~/Library/Application\ Support/Filo/production/DawnGraphiteCache/* "Filo Dawn cache"
-    safe_clean ~/Library/Application\ Support/Filo/production/DawnWebGPUCache/* "Filo WebGPU cache"
+    safe_clean ~/Library/Application\ Support/Filo/production/Cache/* "Filo cache (Filo 缓存)"
+    safe_clean ~/Library/Application\ Support/Filo/production/Code\ Cache/* "Filo code cache (Filo 代码缓存)"
+    safe_clean ~/Library/Application\ Support/Filo/production/GPUCache/* "Filo GPU cache (Filo GPU 缓存)"
+    safe_clean ~/Library/Application\ Support/Filo/production/DawnGraphiteCache/* "Filo Dawn cache (Filo Dawn 缓存)"
+    safe_clean ~/Library/Application\ Support/Filo/production/DawnWebGPUCache/* "Filo WebGPU cache (Filo WebGPU 缓存)"
     # Claude (Electron)
-    safe_clean ~/Library/Application\ Support/Claude/Cache/* "Claude cache"
-    safe_clean ~/Library/Application\ Support/Claude/Code\ Cache/* "Claude code cache"
-    safe_clean ~/Library/Application\ Support/Claude/GPUCache/* "Claude GPU cache"
-    safe_clean ~/Library/Application\ Support/Claude/DawnGraphiteCache/* "Claude Dawn cache"
-    safe_clean ~/Library/Application\ Support/Claude/DawnWebGPUCache/* "Claude WebGPU cache"
+    safe_clean ~/Library/Application\ Support/Claude/Cache/* "Claude cache (Claude 缓存)"
+    safe_clean ~/Library/Application\ Support/Claude/Code\ Cache/* "Claude code cache (Claude 代码缓存)"
+    safe_clean ~/Library/Application\ Support/Claude/GPUCache/* "Claude GPU cache (Claude GPU 缓存)"
+    safe_clean ~/Library/Application\ Support/Claude/DawnGraphiteCache/* "Claude Dawn cache (Claude Dawn 缓存)"
+    safe_clean ~/Library/Application\ Support/Claude/DawnWebGPUCache/* "Claude WebGPU cache (Claude WebGPU 缓存)"
 }
 # Shell and VCS leftovers.
 clean_dev_shell() {
-    safe_clean ~/.gitconfig.lock "Git config lock"
-    safe_clean ~/.gitconfig.bak* "Git config backup"
-    safe_clean ~/.oh-my-zsh/cache/* "Oh My Zsh cache"
-    safe_clean ~/.config/fish/fish_history.bak* "Fish shell backup"
-    safe_clean ~/.bash_history.bak* "Bash history backup"
-    safe_clean ~/.zsh_history.bak* "Zsh history backup"
-    safe_clean ~/.cache/pre-commit/* "pre-commit cache"
+    safe_clean ~/.gitconfig.lock "Git config lock (Git 配置锁)"
+    safe_clean ~/.gitconfig.bak* "Git config backup (Git 配置备份)"
+    safe_clean ~/.oh-my-zsh/cache/* "Oh My Zsh cache (Oh My Zsh 缓存)"
+    safe_clean ~/.config/fish/fish_history.bak* "Fish shell backup (Fish shell 备份)"
+    safe_clean ~/.bash_history.bak* "Bash history backup (Bash 历史备份)"
+    safe_clean ~/.zsh_history.bak* "Zsh history backup (Zsh 历史备份)"
+    safe_clean ~/.cache/pre-commit/* "pre-commit cache (pre-commit 缓存)"
 }
 # Network tool caches.
 clean_dev_network() {
-    safe_clean ~/.cache/curl/* "curl cache"
-    safe_clean ~/.cache/wget/* "wget cache"
-    safe_clean ~/Library/Caches/curl/* "macOS curl cache"
-    safe_clean ~/Library/Caches/wget/* "macOS wget cache"
+    safe_clean ~/.cache/curl/* "curl cache (curl 缓存)"
+    safe_clean ~/.cache/wget/* "wget cache (wget 缓存)"
+    safe_clean ~/Library/Caches/curl/* "macOS curl cache (macOS curl 缓存)"
+    safe_clean ~/Library/Caches/wget/* "macOS wget cache (macOS wget 缓存)"
 }
 # Orphaned SQLite temp files (-shm/-wal). Disabled due to low ROI.
 clean_sqlite_temp_files() {
@@ -1054,27 +1054,27 @@ clean_sqlite_temp_files() {
 # Elixir/Erlang ecosystem.
 # Note: ~/.mix/archives contains installed Mix tools - excluded from cleanup
 clean_dev_elixir() {
-    safe_clean ~/.hex/cache/* "Hex cache"
+    safe_clean ~/.hex/cache/* "Hex cache (Hex 缓存)"
 }
 # Haskell ecosystem.
 # Note: ~/.stack/programs contains Stack-installed GHC compilers - excluded from cleanup
 clean_dev_haskell() {
-    safe_clean ~/.cabal/packages/* "Cabal install cache"
+    safe_clean ~/.cabal/packages/* "Cabal install cache (Cabal 安装缓存)"
 }
 # OCaml ecosystem.
 clean_dev_ocaml() {
-    safe_clean ~/.opam/download-cache/* "Opam cache"
+    safe_clean ~/.opam/download-cache/* "Opam cache (Opam 缓存)"
 }
 # Editor caches.
 # Note: ~/Library/Application Support/Code/User/workspaceStorage contains workspace settings - excluded from cleanup
 clean_dev_editors() {
-    safe_clean ~/Library/Caches/com.microsoft.VSCode/Cache/* "VS Code cached data"
-    safe_clean ~/Library/Application\ Support/Code/CachedData/* "VS Code cached data"
-    safe_clean ~/Library/Application\ Support/Code/DawnGraphiteCache/* "VS Code Dawn cache"
-    safe_clean ~/Library/Application\ Support/Code/DawnWebGPUCache/* "VS Code WebGPU cache"
-    safe_clean ~/Library/Application\ Support/Code/GPUCache/* "VS Code GPU cache"
-    safe_clean ~/Library/Application\ Support/Code/CachedExtensionVSIXs/* "VS Code extension cache"
-    safe_clean ~/Library/Caches/Zed/* "Zed cache"
+    safe_clean ~/Library/Caches/com.microsoft.VSCode/Cache/* "VS Code cached data (VS Code 缓存数据)"
+    safe_clean ~/Library/Application\ Support/Code/CachedData/* "VS Code cached data (VS Code 缓存数据)"
+    safe_clean ~/Library/Application\ Support/Code/DawnGraphiteCache/* "VS Code Dawn cache (VS Code Dawn 缓存)"
+    safe_clean ~/Library/Application\ Support/Code/DawnWebGPUCache/* "VS Code WebGPU cache (VS Code WebGPU 缓存)"
+    safe_clean ~/Library/Application\ Support/Code/GPUCache/* "VS Code GPU cache (VS Code GPU 缓存)"
+    safe_clean ~/Library/Application\ Support/Code/CachedExtensionVSIXs/* "VS Code extension cache (VS Code 扩展缓存)"
+    safe_clean ~/Library/Caches/Zed/* "Zed cache (Zed 缓存)"
 }
 # Main developer tools cleanup sequence.
 clean_developer_tools() {

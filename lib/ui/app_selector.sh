@@ -74,7 +74,7 @@ MOLE_SELECTION_RESULT=""
 # shellcheck disable=SC2154  # apps_data is set by caller
 select_apps_for_uninstall() {
     if [[ ${#apps_data[@]} -eq 0 ]]; then
-        log_warning "No applications available for uninstallation"
+        log_warning "没有可卸载的应用"
         return 1
     fi
 
@@ -177,7 +177,7 @@ select_apps_for_uninstall() {
     fi
 
     if [[ -z "$MOLE_SELECTION_RESULT" ]]; then
-        echo "No apps selected"
+        echo "未选择任何应用"
         return 1
     fi
 

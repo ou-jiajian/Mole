@@ -148,7 +148,7 @@ perform_purge() {
     # Show scanning with spinner below the title line
     if [[ -t 1 ]]; then
         # Print title ONCE with newline; spinner occupies the line below
-        printf '%s\n' "${PURPLE_BOLD}Purge Project Artifacts${NC}"
+        printf '%s\n' "${PURPLE_BOLD}清理项目构建产物${NC}"
 
         # Capture terminal width in parent (most reliable before forking)
         local _parent_cols=80
@@ -189,11 +189,11 @@ perform_purge() {
 
                 # Write directly to /dev/tty: \033[2K clears entire current line, \r goes to start
                 if [[ -n "$last_path" ]]; then
-                    printf '\r\033[2K%s %sScanning %s%s' \
+                    printf '\r\033[2K%s %s正在扫描 %s%s' \
                         "${BLUE}${spin_char}${NC}" \
                         "${GRAY}" "$last_path" "${NC}" > /dev/tty 2> /dev/null
                 else
-                    printf '\r\033[2K%s %sScanning...%s' \
+                    printf '\r\033[2K%s %s正在扫描...%s' \
                         "${BLUE}${spin_char}${NC}" \
                         "${GRAY}" "${NC}" > /dev/tty 2> /dev/null
                 fi
@@ -205,7 +205,7 @@ perform_purge() {
         ) &
         monitor_pid=$!
     else
-        echo -e "${PURPLE_BOLD}Purge Project Artifacts${NC}"
+        echo -e "${PURPLE_BOLD}清理项目构建产物${NC}"
     fi
 
     clean_project_artifacts
@@ -249,16 +249,16 @@ perform_purge() {
         local freed_size_human
         freed_size_human=$(bytes_to_human_kb "$total_size_cleaned")
 
-        local summary_line="Space freed: ${GREEN}${freed_size_human}${NC}"
+        local summary_line="已释放空间：${GREEN}${freed_size_human}${NC}"
         if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-            summary_line="Would free: ${GREEN}${freed_size_human}${NC}"
+            summary_line="预计释放：${GREEN}${freed_size_human}${NC}"
         fi
-        [[ $total_items_cleaned -gt 0 ]] && summary_line+=" | Items: $total_items_cleaned"
-        summary_line+=" | Free: $(get_free_space)"
+        [[ $total_items_cleaned -gt 0 ]] && summary_line+=" | 文件数：$total_items_cleaned"
+        summary_line+=" | 剩余：$(get_free_space)"
         summary_details+=("$summary_line")
     else
         summary_details+=("没有旧的项目构建产物需要清理。")
-        summary_details+=("Free space: $(get_free_space)")
+        summary_details+=("剩余空间：$(get_free_space)")
     fi
 
     # Log session end
@@ -310,8 +310,8 @@ main() {
                 export MOLE_DRY_RUN=1
                 ;;
             *)
-                echo "Unknown option: $arg"
-                echo "Use 'mo purge --help' for usage information"
+                echo "未知的 purge 选项：$arg"
+                echo "请使用 'mo purge --help' 查看用法信息"
                 exit 1
                 ;;
         esac

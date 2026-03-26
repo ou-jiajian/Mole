@@ -21,7 +21,7 @@ clean_xcode_tools() {
         safe_clean ~/Library/Developer/Xcode/DocumentationCache/* "Xcode documentation cache"
         safe_clean ~/Library/Developer/Xcode/DocumentationIndex/* "Xcode documentation index"
     else
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode is running, skipping DerivedData/Archives/Documentation cleanup"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode 正在运行，跳过 DerivedData/Archives/Documentation 清理"
     fi
 }
 # Code editors.
@@ -117,7 +117,7 @@ clean_media_players() {
         fi
     fi
     if [[ "$has_offline_music" == "true" ]]; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Spotify cache protected · offline music detected"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Spotify 缓存已保护 · 检测到离线音乐"
         note_activity
     else
         safe_clean ~/Library/Caches/com.spotify.client/* "Spotify cache"

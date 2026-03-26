@@ -65,7 +65,7 @@ show_suggestions() {
     echo -e "${BLUE}${ICON_ARROW}${NC} Suggestions"
 
     if [[ "$has_suggestions" == "false" ]]; then
-        echo -e "  ${GREEN}✓${NC} All looks good"
+        echo -e "  ${GREEN}✓${NC} 一切正常"
         export HAS_AUTO_FIX_SUGGESTIONS="false"
         return
     fi

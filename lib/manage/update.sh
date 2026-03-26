@@ -160,7 +160,7 @@ perform_updates() {
         echo -e "${GRAY}No updates to perform${NC}"
         return 0
     elif [[ $updated_count -eq $total_count ]]; then
-        echo -e "${GREEN}All updates completed, ${updated_count}/${total_count}${NC}"
+        echo -e "${GREEN}所有更新已完成，${updated_count}/${total_count}${NC}"
         return 0
     else
         echo -e "${RED}Update failed, ${updated_count}/${total_count}${NC}"

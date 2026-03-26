@@ -791,7 +791,7 @@ load_applications() {
     done < "$apps_file"
 
     if [[ ${#apps_data[@]} -eq 0 ]]; then
-        log_warning "No applications available for uninstallation"
+        log_warning "没有可卸载的应用"
         return 1
     fi
 
@@ -837,19 +837,19 @@ main() {
                 export MOLE_DRY_RUN=1
                 ;;
             "--whitelist")
-                echo "Unknown uninstall option: $arg"
-                echo "Whitelist management is currently supported by: mo clean --whitelist / mo optimize --whitelist"
-                echo "Use 'mo uninstall --help' for supported options."
+                echo "未知的 uninstall 选项：$arg"
+                echo "白名单管理目前支持：mo clean --whitelist / mo optimize --whitelist"
+                echo "请使用 'mo uninstall --help' 查看支持的选项。"
                 exit 1
                 ;;
             -*)
-                echo "Unknown uninstall option: $arg"
-                echo "Use 'mo uninstall --help' for supported options."
+                echo "未知的 uninstall 选项：$arg"
+                echo "请使用 'mo uninstall --help' 查看支持的选项。"
                 exit 1
                 ;;
             *)
-                echo "Unknown uninstall argument: $arg"
-                echo "Use 'mo uninstall --help' for supported options."
+                echo "未知的 uninstall 参数：$arg"
+                echo "请使用 'mo uninstall --help' 查看支持的选项。"
                 exit 1
                 ;;
         esac
@@ -903,7 +903,7 @@ main() {
         printf '\033[2J\033[H' >&2
         local selection_count=${#selected_apps[@]}
         if [[ $selection_count -eq 0 ]]; then
-            echo "No apps selected"
+            echo "未选择任何应用"
             rm -f "$apps_file"
             continue
         fi

@@ -103,15 +103,15 @@ flush_dns_cache() {
 # Basic system maintenance.
 opt_system_maintenance() {
     if flush_dns_cache; then
-        opt_msg "DNS cache flushed"
+        opt_msg "DNS 缓存已刷新"
     fi
 
     local spotlight_status
     spotlight_status=$(mdutil -s / 2> /dev/null || echo "")
     if echo "$spotlight_status" | grep -qi "Indexing disabled"; then
-        echo -e "  ${GRAY}${ICON_EMPTY}${NC} Spotlight indexing disabled"
+        echo -e "  ${GRAY}${ICON_EMPTY}${NC} Spotlight 索引已禁用"
     else
-        opt_msg "Spotlight index verified"
+        opt_msg "Spotlight 索引已验证"
     fi
 }
 
@@ -170,8 +170,8 @@ opt_cache_refresh() {
     done
 
     export OPTIMIZE_CACHE_CLEANED_KB="${total_cache_size}"
-    opt_msg "QuickLook thumbnails refreshed"
-    opt_msg "Icon services cache rebuilt"
+    opt_msg "QuickLook 缩略图已刷新"
+    opt_msg "图标服务缓存已重建"
 }
 
 # Removed: opt_maintenance_scripts - macOS handles log rotation automatically via launchd
@@ -199,7 +199,7 @@ opt_saved_state_cleanup() {
         done < <(command find "$state_dir" -type d -name "*.savedState" -mtime "+$MOLE_SAVED_STATE_AGE_DAYS" -print0 2> /dev/null)
     fi
 
-    opt_msg "App saved states optimized"
+    opt_msg "应用保存状态已优化"
 }
 
 # Removed: opt_swap_cleanup - Direct virtual memory operations pose system crash risk
@@ -211,7 +211,7 @@ opt_saved_state_cleanup() {
 opt_fix_broken_configs() {
     local spinner_started="false"
     if [[ -t 1 ]]; then
-        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking preferences..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在检查偏好设置..."
         spinner_started="true"
     fi
 
@@ -223,9 +223,9 @@ opt_fix_broken_configs() {
 
     export OPTIMIZE_CONFIGS_REPAIRED="${broken_prefs}"
     if [[ $broken_prefs -gt 0 ]]; then
-        opt_msg "Repaired $broken_prefs corrupted preference files"
+        opt_msg "已修复 $broken_prefs 个损坏的偏好设置文件"
     else
-        opt_msg "All preference files valid"
+        opt_msg "所有偏好设置文件均有效"
     fi
 }
 
@@ -239,16 +239,16 @@ opt_network_optimization() {
     fi
 
     if [[ "${MOLE_DNS_FLUSHED:-0}" == "1" ]]; then
-        opt_msg "DNS cache already refreshed"
-        opt_msg "mDNSResponder already restarted"
+        opt_msg "DNS 缓存已是最新"
+        opt_msg "mDNSResponder 已重启"
         return 0
     fi
 
     if flush_dns_cache; then
-        opt_msg "DNS cache refreshed"
-        opt_msg "mDNSResponder restarted"
+        opt_msg "DNS 缓存已刷新"
+        opt_msg "mDNSResponder 已重启"
     else
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed to refresh DNS cache"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} 刷新 DNS 缓存失败"
     fi
 }
 
@@ -263,7 +263,7 @@ opt_sqlite_vacuum() {
     fi
 
     if ! command -v sqlite3 > /dev/null 2>&1; then
-        echo -e "  ${GRAY}-${NC} Database optimization already optimal, sqlite3 unavailable"
+        echo -e "  ${GRAY}-${NC} 数据库优化已最优，sqlite3 不可用"
         return 0
     fi
 
@@ -277,13 +277,13 @@ opt_sqlite_vacuum() {
     done
 
     if [[ ${#busy_apps[@]} -gt 0 ]]; then
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Close these apps before database optimization: ${busy_apps[*]}"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} 数据库优化前请先关闭这些应用：${busy_apps[*]}"
         return 0
     fi
 
     local spinner_started="false"
     if [[ "${MOLE_DRY_RUN:-0}" != "1" && -t 1 ]]; then
-        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Optimizing databases..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在优化数据库..."
         spinner_started="true"
     fi
 
@@ -372,23 +372,23 @@ opt_sqlite_vacuum() {
 
     export OPTIMIZE_DATABASES_COUNT="${vacuumed}"
     if [[ $vacuumed -gt 0 ]]; then
-        opt_msg "Optimized $vacuumed databases for Mail, Safari, Messages"
+        opt_msg "已优化 $vacuumed 个 Mail、Safari、Messages 数据库"
     elif [[ $timed_out -eq 0 && $failed -eq 0 ]]; then
-        opt_msg "All databases already optimized"
+        opt_msg "所有数据库已是最优状态"
     else
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Database optimization incomplete"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} 数据库优化不完整"
     fi
 
     if [[ $skipped -gt 0 ]]; then
-        opt_msg "Already optimal for $skipped databases"
+        opt_msg "$skipped 个数据库已是最优状态"
     fi
 
     if [[ $timed_out -gt 0 ]]; then
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Timed out on $timed_out databases"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} $timed_out 个数据库超时"
     fi
 
     if [[ $failed -gt 0 ]]; then
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed on $failed databases"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} $failed 个数据库失败"
     fi
 }
 
@@ -403,7 +403,7 @@ opt_launch_services_rebuild() {
     fi
 
     if [[ -t 1 ]]; then
-        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Repairing LaunchServices..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在修复 LaunchServices..."
     fi
 
     local lsregister
@@ -431,16 +431,16 @@ opt_launch_services_rebuild() {
         fi
 
         if [[ $success -eq 0 ]]; then
-            opt_msg "LaunchServices repaired"
-            opt_msg "File associations refreshed"
+            opt_msg "LaunchServices 已修复"
+            opt_msg "文件关联已刷新"
         else
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed to rebuild LaunchServices"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} 重建 LaunchServices 失败"
         fi
     else
         if [[ -t 1 ]]; then
             stop_inline_spinner
         fi
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} lsregister not found"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} lsregister 未找到"
     fi
 }
 
@@ -501,8 +501,8 @@ opt_font_cache_rebuild() {
             local running_list
             running_list=$(printf "%s, " "${running_browsers[@]}")
             running_list="${running_list%, }"
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Skipped font cache rebuild because browsers or helpers are still running: ${running_list}"
-            echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}Quit affected browsers completely, then rerun optimize if font issues persist${NC}"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} 跳过字体缓存重建，因为浏览器或辅助程序仍在运行：${running_list}"
+            echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}请完全退出相关浏览器，如字体问题持续存在请重新运行优化${NC}"
             return 0
         fi
 
@@ -514,10 +514,10 @@ opt_font_cache_rebuild() {
     fi
 
     if [[ "$success" == "true" ]]; then
-        opt_msg "Font cache cleared"
-        opt_msg "System will rebuild font database automatically"
+        opt_msg "字体缓存已清除"
+        opt_msg "系统将自动重建字体数据库"
     else
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed to clear font cache"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} 清除字体缓存失败"
     fi
 }
 
@@ -538,19 +538,19 @@ opt_memory_pressure_relief() {
 
     if [[ "${MOLE_DRY_RUN:-0}" != "1" ]]; then
         if ! is_memory_pressure_high; then
-            opt_msg "Memory pressure already optimal"
+            opt_msg "内存压力已是最优状态"
             return 0
         fi
 
         if sudo purge > /dev/null 2>&1; then
-            opt_msg "Inactive memory released"
-            opt_msg "System responsiveness improved"
+            opt_msg "非活跃内存已释放"
+            opt_msg "系统响应能力已改善"
         else
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed to release memory pressure"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} 释放内存压力失败"
         fi
     else
-        opt_msg "Inactive memory released"
-        opt_msg "System responsiveness improved"
+        opt_msg "非活跃内存已释放"
+        opt_msg "系统响应能力已改善"
     fi
 }
 
@@ -571,7 +571,7 @@ opt_network_stack_optimize() {
         fi
 
         if [[ "$route_ok" == "true" && "$dns_ok" == "true" ]]; then
-            opt_msg "Network stack already optimal"
+            opt_msg "网络栈已是最优状态"
             return 0
         fi
 
@@ -588,15 +588,15 @@ opt_network_stack_optimize() {
     fi
 
     if [[ "$route_flushed" == "true" ]]; then
-        opt_msg "Network routing table refreshed"
+        opt_msg "网络路由表已刷新"
     fi
     if [[ "$arp_flushed" == "true" ]]; then
-        opt_msg "ARP cache cleared"
+        opt_msg "ARP 缓存已清除"
     else
         if [[ "$route_flushed" == "true" ]]; then
             return 0
         fi
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed to optimize network stack"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} 优化网络栈失败"
     fi
 }
 
@@ -615,12 +615,12 @@ opt_disk_permissions_repair() {
 
     if [[ "${MOLE_DRY_RUN:-0}" != "1" ]]; then
         if ! needs_permissions_repair; then
-            opt_msg "User directory permissions already optimal"
+            opt_msg "用户目录权限已是最优状态"
             return 0
         fi
 
         if [[ -t 1 ]]; then
-            start_inline_spinner "Repairing disk permissions..."
+            start_inline_spinner "正在修复磁盘权限..."
         fi
 
         local success=false
@@ -633,14 +633,14 @@ opt_disk_permissions_repair() {
         fi
 
         if [[ "$success" == "true" ]]; then
-            opt_msg "User directory permissions repaired"
-            opt_msg "File access issues resolved"
+            opt_msg "用户目录权限已修复"
+            opt_msg "文件访问问题已解决"
         else
-            echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed to repair permissions, may not be needed"
+            echo -e "  ${YELLOW}${ICON_WARNING}${NC} 修复权限失败，可能不需要"
         fi
     else
-        opt_msg "User directory permissions repaired"
-        opt_msg "File access issues resolved"
+        opt_msg "用户目录权限已修复"
+        opt_msg "文件访问问题已解决"
     fi
 }
 
@@ -657,7 +657,7 @@ opt_bluetooth_reset() {
     local spinner_started="false"
     local disconnect_notice="Bluetooth devices may disconnect briefly during refresh"
     if [[ -t 1 ]]; then
-        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking Bluetooth..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在检查蓝牙..."
         spinner_started="true"
     fi
 
@@ -666,7 +666,7 @@ opt_bluetooth_reset() {
             if [[ "$spinner_started" == "true" ]]; then
                 stop_inline_spinner
             fi
-            opt_msg "Bluetooth already optimal"
+            opt_msg "蓝牙已是最优状态"
             return 0
         fi
 
@@ -698,7 +698,7 @@ opt_bluetooth_reset() {
             if [[ "$spinner_started" == "true" ]]; then
                 stop_inline_spinner
             fi
-            opt_msg "Bluetooth already optimal"
+            opt_msg "蓝牙已是最优状态"
             return 0
         fi
 
@@ -711,21 +711,21 @@ opt_bluetooth_reset() {
             if [[ "$spinner_started" == "true" ]]; then
                 stop_inline_spinner
             fi
-            opt_msg "Bluetooth module restarted"
-            opt_msg "Connectivity issues resolved"
+            opt_msg "蓝牙模块已重启"
+            opt_msg "连接问题已解决"
         else
             if [[ "$spinner_started" == "true" ]]; then
                 stop_inline_spinner
             fi
-            opt_msg "Bluetooth already optimal"
+            opt_msg "蓝牙已是最优状态"
         fi
     else
         if [[ "$spinner_started" == "true" ]]; then
             stop_inline_spinner
         fi
         echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} ${disconnect_notice}"
-        opt_msg "Bluetooth module restarted"
-        opt_msg "Connectivity issues resolved"
+        opt_msg "蓝牙模块已重启"
+        opt_msg "连接问题已解决"
     fi
 }
 
@@ -735,7 +735,7 @@ opt_spotlight_index_optimize() {
     spotlight_status=$(mdutil -s / 2> /dev/null || echo "")
 
     if echo "$spotlight_status" | grep -qi "Indexing disabled"; then
-        echo -e "  ${GRAY}${ICON_EMPTY}${NC} Spotlight indexing is disabled"
+        echo -e "  ${GRAY}${ICON_EMPTY}${NC} Spotlight 索引已禁用"
         return 0
     fi
 
@@ -755,26 +755,26 @@ opt_spotlight_index_optimize() {
 
         if [[ $slow_count -ge 2 ]]; then
             if ! is_ac_power; then
-                opt_msg "Spotlight index already optimal"
+                opt_msg "Spotlight 索引已是最佳状态"
                 return 0
             fi
 
             if [[ "${MOLE_DRY_RUN:-0}" != "1" ]]; then
-                echo -e "  ${BLUE}${ICON_INFO}${NC} Spotlight search is slow, rebuilding index, may take 1-2 hours"
+                echo -e "  ${BLUE}${ICON_INFO}${NC} Spotlight 搜索较慢，正在重建索引，可能需要 1-2 小时"
                 if sudo mdutil -E / > /dev/null 2>&1; then
-                    opt_msg "Spotlight index rebuild started"
-                    echo -e "  ${GRAY}Indexing will continue in background${NC}"
+                    opt_msg "Spotlight 索引重建已启动"
+                    echo -e "  ${GRAY}索引将在后台继续${NC}"
                 else
-                    echo -e "  ${YELLOW}${ICON_WARNING}${NC} Failed to rebuild Spotlight index"
+                    echo -e "  ${YELLOW}${ICON_WARNING}${NC} 重建 Spotlight 索引失败"
                 fi
             else
-                opt_msg "Spotlight index rebuild started"
+                opt_msg "Spotlight 索引重建已启动"
             fi
         else
-            opt_msg "Spotlight index already optimal"
+            opt_msg "Spotlight 索引已是最佳状态"
         fi
     else
-        opt_msg "Spotlight index verified"
+        opt_msg "Spotlight 索引已验证"
     fi
 }
 
@@ -801,9 +801,9 @@ opt_dock_refresh() {
     fi
 
     if [[ "$refreshed" == "true" ]]; then
-        opt_msg "Dock cache cleared"
+        opt_msg "Dock 缓存已清除"
     fi
-    opt_msg "Dock refreshed"
+    opt_msg "Dock 已刷新"
 }
 
 # Dispatch optimization by action name.

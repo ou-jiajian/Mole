@@ -739,7 +739,7 @@ start_section() {
 # Shows "无需整理" if no activity was recorded
 end_section() {
     if [[ "${TRACK_SECTION:-0}" == "1" && "${SECTION_ACTIVITY:-0}" == "0" ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Nothing to tidy"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 无需整理"
     fi
     TRACK_SECTION=0
 }

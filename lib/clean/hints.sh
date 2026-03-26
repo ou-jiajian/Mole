@@ -364,7 +364,7 @@ show_system_data_hint_notice() {
 
     if [[ ${#clue_labels[@]} -eq 0 ]]; then
         note_activity
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No common System Data clues detected"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未检测到常见系统数据线索"
         return 0
     fi
 

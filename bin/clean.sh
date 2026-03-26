@@ -49,30 +49,30 @@ if [[ -f "$HOME/.config/mole/whitelist" ]]; then
         line="${line//\$HOME/$HOME}"
         line="${line//\$\{HOME\}/$HOME}"
         if [[ "$line" =~ \.\. ]]; then
-            WHITELIST_WARNINGS+=("Path traversal not allowed: $line")
+            WHITELIST_WARNINGS+=("路径遍历不允许：$line")
             continue
         fi
 
         if [[ "$line" != "$FINDER_METADATA_SENTINEL" ]]; then
             if [[ ! "$line" =~ ^[a-zA-Z0-9/_.@\ *-]+$ ]]; then
-                WHITELIST_WARNINGS+=("Invalid path format: $line")
+                WHITELIST_WARNINGS+=("无效的路径格式：$line")
                 continue
             fi
 
             if [[ "$line" != /* ]]; then
-                WHITELIST_WARNINGS+=("Must be absolute path: $line")
+                WHITELIST_WARNINGS+=("必须使用绝对路径：$line")
                 continue
             fi
         fi
 
         if [[ "$line" =~ // ]]; then
-            WHITELIST_WARNINGS+=("Consecutive slashes: $line")
+            WHITELIST_WARNINGS+=("连续斜杠不允许：$line")
             continue
         fi
 
         case "$line" in
             / | /System | /System/* | /bin | /bin/* | /sbin | /sbin/* | /usr/bin | /usr/bin/* | /usr/sbin | /usr/sbin/* | /etc | /etc/* | /var/db | /var/db/*)
-                WHITELIST_WARNINGS+=("Protected system path: $line")
+                WHITELIST_WARNINGS+=("受保护的系统路径：$line")
                 continue
                 ;;
         esac
@@ -375,7 +375,7 @@ safe_clean() {
     if [[ ${#targets[@]} -gt 20 && -t 1 ]]; then
         show_scan_feedback=true
         stop_section_spinner
-        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Scanning ${#targets[@]} items..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在扫描 ${#targets[@]} 个目标..."
     fi
 
     local -a existing_paths=()
@@ -455,7 +455,7 @@ safe_clean() {
     if [[ ${#existing_paths[@]} -gt 10 ]]; then
         show_spinner=true
         local total_paths=${#existing_paths[@]}
-        if [[ -t 1 ]]; then MOLE_SPINNER_PREFIX="  " start_inline_spinner "Scanning items..."; fi
+        if [[ -t 1 ]]; then MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在扫描项目..."; fi
     fi
 
     local cleaning_spinner_started=false
@@ -477,7 +477,7 @@ safe_clean() {
         # Heuristic: mostly files -> sequential stat is faster than subshells.
         if [[ $dir_count -lt 5 && ${#existing_paths[@]} -gt 20 ]]; then
             if [[ -t 1 && "$show_spinner" == "false" ]]; then
-                MOLE_SPINNER_PREFIX="  " start_inline_spinner "Scanning items..."
+                MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在扫描项目..."
                 show_spinner=true
             fi
 
@@ -553,7 +553,7 @@ safe_clean() {
         # Read results back in original order.
         # Start spinner for cleaning phase
         if [[ "$DRY_RUN" != "true" && ${#existing_paths[@]} -gt 0 && -t 1 ]]; then
-            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Cleaning..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在清理..."
             cleaning_spinner_started=true
         fi
         idx=0
@@ -590,7 +590,7 @@ safe_clean() {
     else
         # Start spinner for cleaning phase (small batch)
         if [[ "$DRY_RUN" != "true" && ${#existing_paths[@]} -gt 0 && -t 1 ]]; then
-            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Cleaning..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在清理..."
             cleaning_spinner_started=true
         fi
         local idx=0
@@ -647,11 +647,11 @@ safe_clean() {
 
         local label="$description"
         if [[ ${#targets[@]} -gt 1 ]]; then
-            label+=" ${#targets[@]} items"
+            label+=" ${#targets[@]} 个"
         fi
 
         if [[ "$DRY_RUN" == "true" ]]; then
-            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} $label${NC}, ${YELLOW}$size_human dry${NC}"
+            echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} $label${NC}, ${YELLOW}$size_human 预览${NC}"
 
             local paths_temp
             paths_temp=$(create_temp_file)
@@ -704,7 +704,7 @@ safe_clean() {
                     local size_human
                     size_human=$(bytes_to_human "$((total_size * 1024))")
                     if [[ $child_count -gt 1 ]]; then
-                        echo "$display_path  # $size_human, $child_count items" >> "$EXPORT_LIST_FILE"
+                        echo "$display_path  # $size_human, $child_count 个" >> "$EXPORT_LIST_FILE"
                     else
                         echo "$display_path  # $size_human" >> "$EXPORT_LIST_FILE"
                     fi
@@ -751,7 +751,7 @@ start_cleanup() {
     echo ""
 
     if [[ "$DRY_RUN" != "true" && -t 0 ]]; then
-        echo -e "${GRAY}${ICON_WARNING} Use --dry-run to preview, --whitelist to manage protected paths${NC}"
+        echo -e "${GRAY}${ICON_WARNING} 使用 ${NC}--dry-run${GRAY} 预览，使用 ${NC}--whitelist${GRAY} 管理保护路径${NC}"
     fi
 
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -775,11 +775,11 @@ EOF
         # Preview system section when sudo is already cached (no password prompt).
         if has_sudo_session; then
             SYSTEM_CLEAN=true
-            echo -e "${GREEN}${ICON_SUCCESS}${NC} Admin access available, system preview included"
+            echo -e "${GREEN}${ICON_SUCCESS}${NC} 已获得管理员权限，系统预览已包含"
             echo ""
         else
             SYSTEM_CLEAN=false
-            echo -e "${GRAY}${ICON_WARNING} System caches need sudo, run ${NC}sudo -v && mo clean --dry-run${GRAY} for full preview${NC}"
+            echo -e "${GRAY}${ICON_WARNING} 系统缓存需要 sudo，运行 ${NC}sudo -v && mo clean --dry-run${GRAY} 获取完整预览${NC}"
             echo ""
         fi
         return
@@ -788,7 +788,7 @@ EOF
     if [[ -t 0 ]]; then
         if has_sudo_session; then
             SYSTEM_CLEAN=true
-            echo -e "${GREEN}${ICON_SUCCESS}${NC} Admin access already available"
+            echo -e "${GREEN}${ICON_SUCCESS}${NC} 管理员权限已可用"
             echo ""
         else
             echo -ne "${PURPLE}${ICON_ARROW}${NC} System caches need sudo. ${GREEN}Enter${NC} continue, ${GRAY}Space${NC} skip: "
@@ -810,7 +810,7 @@ EOF
                 printf "\r\033[K" # Clear the prompt line
                 if ensure_sudo_session "System cleanup requires admin access"; then
                     SYSTEM_CLEAN=true
-                    echo -e "${GREEN}${ICON_SUCCESS}${NC} Admin access granted"
+                    echo -e "${GREEN}${ICON_SUCCESS}${NC} 管理员权限已授予"
                     echo ""
                 else
                     SYSTEM_CLEAN=false
@@ -828,12 +828,12 @@ EOF
         echo "非交互模式运行"
         if has_sudo_session; then
             SYSTEM_CLEAN=true
-            echo "  ${ICON_LIST} System-level cleanup enabled, sudo session active"
+            echo "  ${ICON_LIST} 系统级清理已启用，sudo 会话已激活"
         else
             SYSTEM_CLEAN=false
-            echo "  ${ICON_LIST} System-level cleanup skipped, requires sudo"
+            echo "  ${ICON_LIST} 系统级清理已跳过，需要 sudo"
         fi
-        echo "  ${ICON_LIST} User-level cleanup will proceed automatically"
+        echo "  ${ICON_LIST} 用户级清理将自动进行"
         echo ""
     fi
 }
@@ -870,7 +870,7 @@ perform_cleanup() {
                 done
                 [[ "$is_default" == "false" ]] && has_custom=true && break
             done
-            [[ "$has_custom" == "true" ]] && echo -e "${GREEN}${ICON_SUCCESS}${NC} Protected items found"
+            [[ "$has_custom" == "true" ]] && echo -e "${GREEN}${ICON_SUCCESS}${NC} 发现受保护的项目"
         fi
         if [[ "$DRY_RUN" == "true" ]]; then
             echo ""
@@ -882,7 +882,7 @@ perform_cleanup() {
     fi
 
     if [[ "$test_mode_enabled" == "false" && -z "$EXTERNAL_VOLUME_TARGET" ]]; then
-        echo -e "${BLUE}${ICON_ADMIN}${NC} $(detect_architecture) | Free space: $(get_free_space)"
+        echo -e "${BLUE}${ICON_ADMIN}${NC} $(detect_architecture) | 剩余空间：$(get_free_space)"
     fi
 
     if [[ "$test_mode_enabled" == "true" ]]; then
@@ -945,7 +945,7 @@ perform_cleanup() {
         fda_status=$?
         if [[ $fda_status -eq 1 ]]; then
             echo ""
-            echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}Grant Full Disk Access to your terminal in System Settings for best results${NC}"
+            echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}建议在系统设置中为终端授予完全磁盘访问权限以获得最佳效果${NC}"
         fi
     fi
 
@@ -1065,7 +1065,7 @@ perform_cleanup() {
     if [[ "$DRY_RUN" == "true" ]]; then
         summary_heading="预览完成 - 未做任何修改"
     else
-        summary_heading="Cleanup complete"
+        summary_heading="清理完成"
     fi
 
     local -a summary_details=()
@@ -1076,31 +1076,31 @@ perform_cleanup() {
 
         if [[ "$DRY_RUN" == "true" ]]; then
             local stats="预计空间： ${GREEN}${freed_size_human}${NC}"
-            [[ $files_cleaned -gt 0 ]] && stats+=" | Items: $files_cleaned"
-            [[ $total_items -gt 0 ]] && stats+=" | Categories: $total_items"
+            [[ $files_cleaned -gt 0 ]] && stats+=" | 文件数：$files_cleaned"
+            [[ $total_items -gt 0 ]] && stats+=" | 类目：$total_items"
             summary_details+=("$stats")
 
             {
                 echo ""
                 echo "# ============================================"
-                echo "# Summary"
+                echo "# 摘要"
                 echo "# ============================================"
-                echo "# Potential cleanup: ${freed_size_human}"
-                echo "# Items: $files_cleaned"
-                echo "# Categories: $total_items"
+                echo "# 预计可释放空间：${freed_size_human}"
+                echo "# 文件数：$files_cleaned"
+                echo "# 类目：$total_items"
             } >> "$EXPORT_LIST_FILE"
 
-            summary_details+=("Detailed file list: ${GRAY}$EXPORT_LIST_FILE${NC}")
+            summary_details+=("详细文件列表：${GRAY}$EXPORT_LIST_FILE${NC}")
             summary_details+=("使用 ${GRAY}mo clean --whitelist${NC} 添加保护规则")
         else
-            local summary_line="Space freed: ${GREEN}${freed_size_human}${NC}"
+            local summary_line="已释放空间：${GREEN}${freed_size_human}${NC}"
 
             if [[ $files_cleaned -gt 0 && $total_items -gt 0 ]]; then
-                summary_line+=" | Items cleaned: $files_cleaned | Categories: $total_items"
+                summary_line+=" | 已清理文件：$files_cleaned | 类目：$total_items"
             elif [[ $files_cleaned -gt 0 ]]; then
-                summary_line+=" | Items cleaned: $files_cleaned"
+                summary_line+=" | 已清理文件：$files_cleaned"
             elif [[ $total_items -gt 0 ]]; then
-                summary_line+=" | Categories: $total_items"
+                summary_line+=" | 类目：$total_items"
             fi
 
             summary_details+=("$summary_line")
@@ -1112,25 +1112,25 @@ perform_cleanup() {
 
                 if [[ $movies -gt 0 ]]; then
                     if [[ $movies -eq 1 ]]; then
-                        summary_details+=("Equivalent to ~$movies 4K movie of storage.")
+                        summary_details+=("相当于约 $movies 部 4K 电影的存储空间。")
                     else
-                        summary_details+=("Equivalent to ~$movies 4K movies of storage.")
+                        summary_details+=("相当于约 $movies 部 4K 电影的存储空间。")
                     fi
                 fi
             fi
 
             local final_free_space
             final_free_space=$(get_free_space)
-            summary_details+=("Free space now: $final_free_space")
+            summary_details+=("当前剩余空间：$final_free_space")
         fi
     else
         summary_status="info"
         if [[ "$DRY_RUN" == "true" ]]; then
-            summary_details+=("No significant reclaimable space detected, system already clean.")
+            summary_details+=("未检测到显著可回收空间，系统已较干净。")
         else
-            summary_details+=("System was already clean; no additional space freed.")
+            summary_details+=("系统已较干净，未释放额外空间。")
         fi
-        summary_details+=("Free space now: $(get_free_space)")
+        summary_details+=("当前剩余空间：$(get_free_space)")
     fi
 
     if [[ $had_errexit -eq 1 ]]; then
@@ -1161,7 +1161,7 @@ main() {
             "--external")
                 shift
                 if [[ $# -eq 0 ]]; then
-                    echo "Missing path for --external" >&2
+                    echo "缺少 --external 的路径参数" >&2
                     exit 1
                 fi
                 EXTERNAL_VOLUME_TARGET=$(validate_external_volume_target "$1") || exit 1

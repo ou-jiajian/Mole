@@ -40,7 +40,7 @@ check_touchid_sudo() {
     # Check if Touch ID is configured for sudo
     local pam_file="/etc/pam.d/sudo"
     if [[ -f "$pam_file" ]] && grep -q "pam_tid.so" "$pam_file" 2> /dev/null; then
-        echo -e "  ${GREEN}✓${NC} Touch ID     Biometric authentication enabled"
+        echo -e "  ${GREEN}✓${NC} Touch ID     生物识别身份验证已启用"
     else
         # Check if Touch ID is supported
         local is_supported=false
@@ -53,7 +53,7 @@ check_touchid_sudo() {
         fi
 
         if [[ "$is_supported" == "true" ]]; then
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} Touch ID     ${YELLOW}Not configured for sudo${NC}"
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} Touch ID     ${YELLOW}未配置 sudo 身份验证${NC}"
             export TOUCHID_NOT_CONFIGURED=true
         fi
     fi
@@ -65,9 +65,9 @@ check_rosetta() {
     # Check Rosetta 2 (for Apple Silicon Macs) - informational only, not auto-fixed
     if [[ "$(uname -m)" == "arm64" ]]; then
         if [[ -f "/Library/Apple/usr/share/rosetta/rosetta" ]]; then
-            echo -e "  ${GREEN}✓${NC} Rosetta 2    Intel app translation ready"
+            echo -e "  ${GREEN}✓${NC} Rosetta 2    Intel 应用翻译就绪"
         else
-            echo -e "  ${GRAY}${ICON_EMPTY}${NC} Rosetta 2    ${GRAY}Not installed${NC}"
+            echo -e "  ${GRAY}${ICON_EMPTY}${NC} Rosetta 2    ${GRAY}未安装${NC}"
         fi
     fi
 }
@@ -81,9 +81,9 @@ check_git_config() {
         local git_email=$(git config --global user.email 2> /dev/null || echo "")
 
         if [[ -n "$git_name" && -n "$git_email" ]]; then
-            echo -e "  ${GREEN}✓${NC} Git          Global identity configured"
+            echo -e "  ${GREEN}✓${NC} Git          全局身份已配置"
         else
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} Git          ${YELLOW}User identity not set${NC}"
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} Git          ${YELLOW}用户身份未设置${NC}"
         fi
     fi
 }
@@ -106,9 +106,9 @@ check_filevault() {
     if command -v fdesetup > /dev/null 2>&1; then
         local fv_status=$(fdesetup status 2> /dev/null || echo "")
         if echo "$fv_status" | grep -q "FileVault is On"; then
-            echo -e "  ${GREEN}✓${NC} FileVault    Disk encryption active"
+            echo -e "  ${GREEN}✓${NC} FileVault    磁盘加密已启用"
         else
-            echo -e "  ${RED}✗${NC} FileVault    ${RED}Disk encryption disabled${NC}"
+            echo -e "  ${RED}✗${NC} FileVault    ${RED}磁盘加密已禁用${NC}"
             export FILEVAULT_DISABLED=true
         fi
     fi
@@ -144,9 +144,9 @@ check_firewall() {
     # Fall back to macOS built-in firewall check
     local firewall_output=$(sudo /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2> /dev/null || echo "")
     if [[ "$firewall_output" == *"State = 1"* ]] || [[ "$firewall_output" == *"State = 2"* ]]; then
-        echo -e "  ${GREEN}✓${NC} Firewall     Network protection enabled"
+        echo -e "  ${GREEN}✓${NC} Firewall     网络防护已启用"
     else
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firewall     ${YELLOW}Network protection disabled${NC}"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firewall     ${YELLOW}网络防护已禁用${NC}"
         export FIREWALL_DISABLED=true
     fi
 }
@@ -158,10 +158,10 @@ check_gatekeeper() {
     if command -v spctl > /dev/null 2>&1; then
         local gk_status=$(spctl --status 2> /dev/null || echo "")
         if echo "$gk_status" | grep -q "enabled"; then
-            echo -e "  ${GREEN}✓${NC} Gatekeeper   App download protection active"
+            echo -e "  ${GREEN}✓${NC} Gatekeeper   应用下载保护已激活"
             unset GATEKEEPER_DISABLED
         else
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} Gatekeeper   ${YELLOW}App security disabled${NC}"
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} Gatekeeper   ${YELLOW}应用安全已禁用${NC}"
             export GATEKEEPER_DISABLED=true
         fi
     fi
@@ -174,9 +174,9 @@ check_sip() {
     if command -v csrutil > /dev/null 2>&1; then
         local sip_status=$(csrutil status 2> /dev/null || echo "")
         if echo "$sip_status" | grep -q "enabled"; then
-            echo -e "  ${GREEN}✓${NC} SIP          System integrity protected"
+            echo -e "  ${GREEN}✓${NC} SIP          系统完整性已保护"
         else
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} SIP          ${YELLOW}System protection disabled${NC}"
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} SIP          ${YELLOW}系统保护已禁用${NC}"
         fi
     fi
 }
@@ -289,7 +289,7 @@ get_software_updates() {
 
     local spinner_started=false
     if [[ -t 1 && -z "${SOFTWAREUPDATE_SPINNER_SHOWN:-}" ]]; then
-        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking system updates..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在检查系统更新..."
         spinner_started=true
         export SOFTWAREUPDATE_SPINNER_SHOWN=1
     fi
@@ -357,7 +357,7 @@ check_homebrew_updates() {
         local spinner_started=false
 
         if [[ -t 1 ]]; then
-            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking Homebrew updates..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在检查 Homebrew 更新..."
             spinner_started=true
         fi
 
@@ -487,7 +487,7 @@ check_mole_update() {
     else
         # Show spinner while checking
         if [[ -t 1 ]]; then
-            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking Mole version..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在检查 Mole 版本..."
         fi
 
         # Try to get latest version from GitHub
@@ -604,7 +604,7 @@ check_memory_usage() {
     local mem_total
     mem_total=$(sysctl -n hw.memsize 2> /dev/null || echo "0")
     if [[ -z "$mem_total" || "$mem_total" -le 0 ]]; then
-        echo -e "  ${GRAY}-${NC} Memory       Unable to determine"
+        echo -e "  ${GRAY}-${NC} Memory       无法确定"
         return
     fi
 
@@ -655,7 +655,7 @@ check_login_items() {
     if [[ -t 0 ]]; then
         # Show spinner while getting login items
         if [[ -t 1 ]]; then
-            MOLE_SPINNER_PREFIX="  " start_inline_spinner "Checking login items..."
+            MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在检查登录项..."
         fi
 
         while IFS= read -r login_item; do
@@ -710,7 +710,7 @@ check_cache_size() {
 
     # Show spinner while calculating cache size
     if [[ -t 1 ]]; then
-        MOLE_SPINNER_PREFIX="  " start_inline_spinner "Scanning cache..."
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "正在扫描缓存..."
     fi
 
     for cache_path in "${cache_paths[@]}"; do

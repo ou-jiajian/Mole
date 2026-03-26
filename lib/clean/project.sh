@@ -1058,7 +1058,7 @@ clean_project_artifacts() {
     done
     # Build menu options - one per artifact
     if [[ -t 1 ]]; then
-        start_inline_spinner "Calculating sizes..."
+        start_inline_spinner "正在计算大小..."
     fi
 
     # Pre-compute all sizes in parallel to avoid sequential timeout hangs (issue #560).
@@ -1574,7 +1574,7 @@ clean_project_artifacts() {
             continue
         fi
         if [[ -t 1 ]]; then
-            start_inline_spinner "Cleaning $display_item_path..."
+            start_inline_spinner "正在清理 $display_item_path..."
         fi
         local removal_recorded=false
         if [[ -e "$item_path" ]]; then

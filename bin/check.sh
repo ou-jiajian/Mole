@@ -45,10 +45,10 @@ main() {
 
     # Run all checks in parallel with spinner
     if [[ -t 1 ]]; then
-        echo -ne "${PURPLE_BOLD}System Check${NC}  "
-        start_inline_spinner "Running checks..."
+        echo -ne "${PURPLE_BOLD}系统检查${NC}  "
+        start_inline_spinner "正在检查..."
     else
-        echo -e "${PURPLE_BOLD}System Check${NC}"
+        echo -e "${PURPLE_BOLD}系统检查${NC}"
         echo ""
     fi
 
@@ -67,19 +67,19 @@ main() {
     fi
 
     # Display results
-    echo -e "${BLUE}${ICON_ARROW}${NC} System updates"
+    echo -e "${BLUE}${ICON_ARROW}${NC} 系统更新"
     cat "$updates_file"
 
     printf '\n'
-    echo -e "${BLUE}${ICON_ARROW}${NC} System health"
+    echo -e "${BLUE}${ICON_ARROW}${NC} 系统健康"
     cat "$health_file"
 
     printf '\n'
-    echo -e "${BLUE}${ICON_ARROW}${NC} Security posture"
+    echo -e "${BLUE}${ICON_ARROW}${NC} 安全状态"
     cat "$security_file"
 
     printf '\n'
-    echo -e "${BLUE}${ICON_ARROW}${NC} Configuration"
+    echo -e "${BLUE}${ICON_ARROW}${NC} 系统配置"
     cat "$config_file"
 
     # Show suggestions

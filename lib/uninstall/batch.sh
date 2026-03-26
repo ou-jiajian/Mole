@@ -54,21 +54,21 @@ decode_file_list() {
     # macOS uses -D, GNU uses -d. Always return 0 for set -e safety.
     if ! decoded=$(printf '%s' "$encoded" | base64 -D 2> /dev/null); then
         if ! decoded=$(printf '%s' "$encoded" | base64 -d 2> /dev/null); then
-            log_error "Failed to decode file list for $app_name" >&2
+            log_error "解码 $app_name 的文件列表失败" >&2
             echo ""
             return 0 # Return success with empty string
         fi
     fi
 
     if [[ "$decoded" =~ $'\0' ]]; then
-        log_warning "File list for $app_name contains null bytes, rejecting" >&2
+        log_warning "$app_name 的文件列表包含空字节，已拒绝" >&2
         echo ""
         return 0 # Return success with empty string
     fi
 
     while IFS= read -r line; do
         if [[ -n "$line" && ! "$line" =~ ^/ ]]; then
-            log_warning "Invalid path in file list for $app_name: $line" >&2
+            log_warning "$app_name 的文件列表包含无效路径：$line" >&2
             echo ""
             return 0 # Return success with empty string
         fi
@@ -251,7 +251,7 @@ batch_uninstall_applications() {
 
     # shellcheck disable=SC2154
     if [[ ${#selected_apps[@]} -eq 0 ]]; then
-        log_warning "No applications selected for uninstallation"
+        log_warning "未选择任何要卸载的应用"
         return 0
     fi
 
@@ -292,7 +292,7 @@ batch_uninstall_applications() {
     # Cache current user outside loop
     local current_user=$(whoami)
 
-    if [[ -t 1 ]]; then start_inline_spinner "Scanning files..."; fi
+    if [[ -t 1 ]]; then start_inline_spinner "正在扫描文件..."; fi
     for selected_app in "${selected_apps[@]}"; do
         [[ -z "$selected_app" ]] && continue
         IFS='|' read -r _ app_path app_name bundle_id _ _ <<< "$selected_app"
@@ -384,14 +384,14 @@ batch_uninstall_applications() {
 
     local size_display=$(bytes_to_human "$((total_estimated_size * 1024))")
 
-    echo -e "\n${PURPLE_BOLD}Files to be removed:${NC}"
+    echo -e "\n${PURPLE_BOLD}将要删除的文件：${NC}"
 
     # Warn if brew cask apps are present.
     local has_brew_cask=false
     [[ ${#brew_cask_apps[@]} -gt 0 ]] && has_brew_cask=true
 
     if [[ "$has_brew_cask" == "true" ]]; then
-        echo -e "${GRAY}${ICON_WARNING} Homebrew apps will be fully cleaned, --zap removes configs and data${NC}"
+        echo -e "${GRAY}${ICON_WARNING} Homebrew 应用将被完全清理，--zap 会删除配置和数据${NC}"
     fi
 
     echo ""
@@ -426,7 +426,7 @@ batch_uninstall_applications() {
         # Show all system files so users can fully review before deletion.
         while IFS= read -r file; do
             if [[ -n "$file" && -e "$file" ]]; then
-                echo -e "  ${BLUE}${ICON_WARNING}${NC} System: $file"
+                echo -e "  ${BLUE}${ICON_WARNING}${NC} 系统文件：$file"
             fi
         done <<< "$system_files"
     done
@@ -483,7 +483,7 @@ batch_uninstall_applications() {
 
         if ! ensure_sudo_session "$admin_prompt"; then
             echo ""
-            log_error "Admin access denied"
+            log_error "管理员权限被拒绝"
             _restore_uninstall_traps
             return 1
         fi
@@ -509,9 +509,9 @@ batch_uninstall_applications() {
         [[ "$is_brew_cask" == "true" ]] && brew_tag=" ${CYAN}[Brew]${NC}"
         if [[ -t 1 ]]; then
             if [[ ${#app_details[@]} -gt 1 ]]; then
-                start_inline_spinner "[$current_index/${#app_details[@]}] Uninstalling ${app_name}${brew_tag}..."
+                start_inline_spinner "[$current_index/${#app_details[@]}] 正在卸载 ${app_name}${brew_tag}..."
             else
-                start_inline_spinner "Uninstalling ${app_name}${brew_tag}..."
+                start_inline_spinner "正在卸载 ${app_name}${brew_tag}..."
             fi
         fi
 
