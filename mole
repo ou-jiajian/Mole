@@ -748,7 +748,7 @@ remove_mole() {
     echo "  ${ICON_LIST} ~/.config/mole"
     echo "  ${ICON_LIST} ~/.cache/mole"
     echo "  ${ICON_LIST} ~/Library/Logs/mole"
-    echo -ne "${PURPLE}${ICON_ARROW}${NC} Press ${GREEN}Enter${NC} to confirm, ${GRAY}ESC${NC} to cancel: "
+    echo -ne "${PURPLE}${ICON_ARROW}${NC} 按 ${GREEN}回车${NC} 确认，${GRAY}ESC${NC} 取消: "
 
     IFS= read -r -s -n1 key || key=""
     drain_pending_input # Clean up any escape sequence remnants
@@ -876,7 +876,7 @@ show_main_menu() {
         if ! is_touchid_configured; then
             controls="${controls}  |  T 触控ID"
         elif [[ "${MAIN_MENU_SHOW_UPDATE:-false}" == "true" ]]; then
-            controls="${controls}  |  U Update"
+            controls="${controls}  |  U 更新"
         fi
         controls="${controls}  |  Q 退出${NC}"
         printf '\r\033[2K%s\n' "$controls"
@@ -954,7 +954,7 @@ interactive_main_menu() {
             "CHAR:5")
                 launch_menu_command "$SCRIPT_DIR/bin/status.sh"
                 ;;
-            "MORE")
+            "更多")
                 show_cursor
                 clear
                 show_help
