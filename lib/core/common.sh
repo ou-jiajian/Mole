@@ -79,9 +79,9 @@ update_via_homebrew() {
 
     # Update Homebrew
     if [[ -t 1 ]]; then
-        start_inline_spinner "Updating Homebrew..."
+        start_inline_spinner "正在更新 Homebrew..."
     else
-        echo "Updating Homebrew..."
+        echo "正在更新 Homebrew..."
     fi
 
     brew update > "$temp_update" 2>&1 &
@@ -94,9 +94,9 @@ update_via_homebrew() {
 
     # Upgrade Mole
     if [[ -t 1 ]]; then
-        start_inline_spinner "Upgrading Mole..."
+        start_inline_spinner "正在升级 Mole..."
     else
-        echo "Upgrading Mole..."
+        echo "正在升级 Mole..."
     fi
 
     brew upgrade mole > "$temp_upgrade" 2>&1 &
@@ -125,7 +125,7 @@ update_via_homebrew() {
         echo -e "${GREEN}${ICON_SUCCESS}${NC} Already on latest version, ${installed_version:-$current_version}"
         echo ""
     elif echo "$upgrade_output" | grep -q "Error:"; then
-        log_error "Homebrew upgrade failed"
+        log_error "Homebrew 升级失败"
         echo "$upgrade_output" | grep "Error:" >&2
         return 1
     else

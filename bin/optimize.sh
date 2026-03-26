@@ -144,11 +144,11 @@ show_optimization_summary() {
     local total_applied=$((safe_count + confirm_count))
 
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        summary_title="Dry Run Complete, No Changes Made"
+        summary_title="预览完成，未做任何修改"
         summary_details+=("Would apply ${YELLOW}${total_applied:-0}${NC} optimizations")
         summary_details+=("Run without ${YELLOW}--dry-run${NC} to apply these changes")
     else
-        summary_title="Optimization and Check Complete"
+        summary_title="优化和检查完成"
 
         # Build statistics summary
         local -a stats=()
@@ -468,7 +468,7 @@ main() {
     fi
 
     if [[ -t 1 ]]; then
-        start_inline_spinner "Collecting system info..."
+        start_inline_spinner "正在收集系统信息..."
     fi
 
     if ! health_json=$(generate_health_json 2> /dev/null); then
@@ -529,7 +529,7 @@ main() {
 
     echo ""
     if [[ "${MOLE_DRY_RUN:-0}" != "1" ]]; then
-        ensure_sudo_session "System optimization requires admin access" || true
+        ensure_sudo_session "系统优化需要管理员权限" || true
     fi
 
     export FIRST_ACTION=true

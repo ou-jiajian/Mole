@@ -886,10 +886,10 @@ perform_cleanup() {
     fi
 
     if [[ "$test_mode_enabled" == "true" ]]; then
-        local summary_heading="Test mode complete"
+        local summary_heading="测试模式完成"
         local -a summary_details
         summary_details=()
-        summary_details+=("Test mode - no actual cleanup performed")
+        summary_details+=("测试模式 - 未执行实际清理")
         print_summary_block "$summary_heading" "${summary_details[@]}"
         printf '\n'
         return 0
@@ -1063,7 +1063,7 @@ perform_cleanup() {
     local summary_heading=""
     local summary_status="success"
     if [[ "$DRY_RUN" == "true" ]]; then
-        summary_heading="Dry run complete - no changes made"
+        summary_heading="预览完成 - 未做任何修改"
     else
         summary_heading="Cleanup complete"
     fi

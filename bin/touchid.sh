@@ -90,7 +90,7 @@ enable_touchid() {
 
     # First check if system supports Touch ID
     if ! supports_touchid; then
-        log_warning "This Mac may not support Touch ID"
+        log_warning "此 Mac 可能不支持 Touch ID"
         read -rp "Continue anyway? [y/N] " confirm
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             echo -e "${YELLOW}Cancelled${NC}"
@@ -153,13 +153,13 @@ enable_touchid() {
                 temp_file=$(create_temp_file)
                 grep -v "pam_tid.so" "$PAM_SUDO_FILE" > "$temp_file"
                 sudo mv "$temp_file" "$PAM_SUDO_FILE"
-                log_success "Touch ID migrated to sudo_local"
+                log_success "Touch ID 已迁移至 sudo_local"
             else
                 log_success "Touch ID enabled, via sudo_local, try: sudo ls"
             fi
             return 0
         else
-            log_error "Failed to write to sudo_local"
+            log_error "写入 sudo_local 失败"
             return 1
         fi
     fi
@@ -175,7 +175,7 @@ enable_touchid() {
     # Create backup only if it doesn't exist to preserve original state
     if [[ ! -f "${PAM_SUDO_FILE}.mole-backup" ]]; then
         if ! sudo cp "$PAM_SUDO_FILE" "${PAM_SUDO_FILE}.mole-backup" 2> /dev/null; then
-            log_error "Failed to create backup"
+            log_error "创建备份失败"
             return 1
         fi
     fi
@@ -196,16 +196,16 @@ enable_touchid() {
 
     # Verify content change
     if cmp -s "$PAM_SUDO_FILE" "$temp_file"; then
-        log_error "Failed to modify configuration"
+        log_error "修改配置失败"
         return 1
     fi
 
     # Apply the changes
     if sudo mv "$temp_file" "$PAM_SUDO_FILE" 2> /dev/null; then
-        log_success "Touch ID enabled, try: sudo ls"
+        log_success "Touch ID 已启用，可执行：sudo ls 测试"
         return 0
     else
-        log_error "Failed to enable Touch ID"
+        log_error "启用 Touch ID 失败"
         return 1
     fi
 }
@@ -247,7 +247,7 @@ disable_touchid() {
             echo ""
             return 0
         else
-            log_error "Failed to disable Touch ID from sudo_local"
+            log_error "从 sudo_local 禁用 Touch ID 失败"
             return 1
         fi
     fi
@@ -257,7 +257,7 @@ disable_touchid() {
         # Create backup only if it doesn't exist
         if [[ ! -f "${PAM_SUDO_FILE}.mole-backup" ]]; then
             if ! sudo cp "$PAM_SUDO_FILE" "${PAM_SUDO_FILE}.mole-backup" 2> /dev/null; then
-                log_error "Failed to create backup"
+                log_error "创建备份失败"
                 return 1
             fi
         fi
@@ -271,13 +271,13 @@ disable_touchid() {
             echo ""
             return 0
         else
-            log_error "Failed to disable Touch ID"
+            log_error "禁用 Touch ID 失败"
             return 1
         fi
     fi
 
     # Should not reach here if is_touchid_configured was true
-    log_error "Could not find Touch ID configuration to disable"
+    log_error "找不到要禁用的 Touch ID 配置"
     return 1
 }
 
@@ -301,7 +301,7 @@ show_menu() {
                 ;;
             *)
                 echo ""
-                log_error "Invalid key"
+                log_error "无效按键"
                 ;;
         esac
     else
@@ -319,7 +319,7 @@ show_menu() {
                 ;;
             *)
                 echo ""
-                log_error "Invalid key"
+                log_error "无效按键"
                 ;;
         esac
     fi
@@ -343,7 +343,7 @@ main() {
                 if [[ -z "$command" ]]; then
                     command="$arg"
                 else
-                    log_error "Only one touchid command is supported per run"
+                    log_error "每次运行只支持一个 touchid 命令"
                     return 1
                 fi
                 ;;

@@ -58,7 +58,7 @@ paginated_multi_select() {
 
     # Validation
     if [[ ${#items[@]} -eq 0 ]]; then
-        echo "No items provided" >&2
+        echo "未提供任何项目" >&2
         return 1
     fi
 

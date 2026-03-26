@@ -44,7 +44,7 @@ uninstall_relative_time_from_epoch() {
     local now_epoch="${2:-0}"
 
     if [[ ! "$value_epoch" =~ ^[0-9]+$ || $value_epoch -le 0 ]]; then
-        echo "Unknown"
+        echo "未知"
         return 0
     fi
 
@@ -54,27 +54,27 @@ uninstall_relative_time_from_epoch() {
     fi
 
     if [[ $days_ago -eq 0 ]]; then
-        echo "Today"
+        echo "今天"
     elif [[ $days_ago -eq 1 ]]; then
-        echo "Yesterday"
+        echo "昨天"
     elif [[ $days_ago -lt 7 ]]; then
         echo "${days_ago} days ago"
     elif [[ $days_ago -lt 30 ]]; then
         local weeks_ago=$((days_ago / 7))
-        [[ $weeks_ago -eq 1 ]] && echo "1 week ago" || echo "${weeks_ago} weeks ago"
+        [[ $weeks_ago -eq 1 ]] && echo "1 周前" || echo "${weeks_ago} weeks ago"
     elif [[ $days_ago -lt 365 ]]; then
         local months_ago=$((days_ago / 30))
-        [[ $months_ago -eq 1 ]] && echo "1 month ago" || echo "${months_ago} months ago"
+        [[ $months_ago -eq 1 ]] && echo "1 个月前" || echo "${months_ago} months ago"
     else
         local years_ago=$((days_ago / 365))
-        [[ $years_ago -eq 1 ]] && echo "1 year ago" || echo "${years_ago} years ago"
+        [[ $years_ago -eq 1 ]] && echo "1 年前" || echo "${years_ago} years ago"
     fi
 }
 
 uninstall_normalize_size_display() {
     local size="${1:-}"
-    if [[ -z "$size" || "$size" == "0" || "$size" == "Unknown" ]]; then
-        echo "N/A"
+    if [[ -z "$size" || "$size" == "0" || "$size" == "未知" ]]; then
+        echo "无"
         return 0
     fi
     echo "$size"
@@ -85,7 +85,7 @@ uninstall_normalize_last_used_display() {
     local display
     display=$(format_last_used_summary "$last_used")
     if [[ -z "$display" || "$display" == "Never" ]]; then
-        echo "Unknown"
+        echo "未知"
         return 0
     fi
     echo "$display"
@@ -613,7 +613,7 @@ scan_applications() {
         wait "$pid" 2> /dev/null
     done
 
-    update_scan_status "Building uninstall index..." "0" "0"
+    update_scan_status "正在构建卸载索引..." "0" "0"
 
     if [[ ! -s "$scan_raw_file" ]]; then
         stop_scan_spinner
@@ -624,7 +624,7 @@ scan_applications() {
         return 1
     fi
 
-    update_scan_status "Merging cache data..." "0" "0"
+    update_scan_status "正在合并缓存数据..." "0" "0"
     awk -F'|' '
         NR == FNR {
             cache_mtime[$1] = $2
@@ -650,12 +650,12 @@ scan_applications() {
     metadata_total=$(wc -l < "$merged_file" 2> /dev/null || echo "0")
     [[ "$metadata_total" =~ ^[0-9]+$ ]] || metadata_total=0
     local metadata_processed=0
-    update_scan_status "Collecting metadata..." "0" "$metadata_total"
+    update_scan_status "正在收集元数据..." "0" "$metadata_total"
 
     while IFS='|' read -r app_path display_name bundle_id app_mtime cached_mtime cached_size_kb cached_epoch cached_updated_epoch cached_bundle_id cached_display_name; do
         ((metadata_processed++))
         if ((metadata_processed % 5 == 0 || metadata_processed == metadata_total)); then
-            update_scan_status "Collecting metadata..." "$metadata_processed" "$metadata_total"
+            update_scan_status "正在收集元数据..." "$metadata_processed" "$metadata_total"
         fi
 
         [[ -n "$app_path" && -e "$app_path" ]] || continue
@@ -736,7 +736,7 @@ scan_applications() {
         echo "${final_epoch}|${app_path}|${display_name}|${bundle_id}|${final_size}|${final_last_used}|${final_size_kb}" >> "$temp_file"
     done < "$merged_file"
 
-    update_scan_status "Updating cache..." "0" "0"
+    update_scan_status "正在更新缓存..." "0" "0"
     if [[ -s "$cache_snapshot_file" ]]; then
         if uninstall_acquire_metadata_lock "$MOLE_UNINSTALL_META_CACHE_LOCK"; then
             mv "$cache_snapshot_file" "$MOLE_UNINSTALL_META_CACHE_FILE" 2> /dev/null || {
@@ -747,7 +747,7 @@ scan_applications() {
         fi
     fi
 
-    update_scan_status "Sorting application list..." "0" "0"
+    update_scan_status "正在排序应用列表..." "0" "0"
     sort -t'|' -k1,1n "$temp_file" > "${temp_file}.sorted" || {
         stop_scan_spinner
         rm -f "$temp_file" "$scan_raw_file" "$merged_file" "$refresh_file" "$cache_snapshot_file"
@@ -758,7 +758,7 @@ scan_applications() {
     rm -f "$temp_file" "$scan_raw_file" "$merged_file" "$cache_snapshot_file"
     [[ $cache_source_is_temp == true ]] && rm -f "$cache_source" 2> /dev/null || true
 
-    update_scan_status "Finalizing list..." "0" "0"
+    update_scan_status "正在完成列表..." "0" "0"
     start_uninstall_metadata_refresh "$refresh_file"
     stop_scan_spinner
 

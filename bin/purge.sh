@@ -226,7 +226,7 @@ perform_purge() {
     # Final summary (matching clean.sh format)
     echo ""
 
-    local summary_heading="Purge complete"
+    local summary_heading="清理完成"
     local -a summary_details=()
     local total_size_cleaned=0
     local total_items_cleaned=0
@@ -242,7 +242,7 @@ perform_purge() {
     fi
 
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        summary_heading="Dry run complete - no changes made"
+        summary_heading="预览完成 - 未做任何修改"
     fi
 
     if [[ $total_size_cleaned -gt 0 ]]; then
@@ -257,7 +257,7 @@ perform_purge() {
         summary_line+=" | Free: $(get_free_space)"
         summary_details+=("$summary_line")
     else
-        summary_details+=("No old project artifacts to clean.")
+        summary_details+=("没有旧的项目构建产物需要清理。")
         summary_details+=("Free space: $(get_free_space)")
     fi
 

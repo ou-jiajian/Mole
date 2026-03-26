@@ -202,7 +202,7 @@ collect_installers() {
 
     # Start scanning with spinner
     if [[ -t 1 ]]; then
-        start_inline_spinner "Scanning for installers..."
+        start_inline_spinner "正在扫描安装包..."
     fi
 
     # Start debug session
@@ -230,7 +230,7 @@ collect_installers() {
 
     # Calculate sizes with spinner
     if [[ -t 1 ]]; then
-        start_inline_spinner "Calculating sizes..."
+        start_inline_spinner "正在计算大小..."
     fi
 
     # Process each installer
@@ -573,7 +573,7 @@ delete_selected_installers() {
     total_size_freed_kb=0
 
     if [[ -t 1 ]]; then
-        start_inline_spinner "Removing installers..."
+        start_inline_spinner "正在删除安装包..."
     fi
 
     for idx in "${selected_indices[@]}"; do
@@ -648,7 +648,7 @@ perform_installers() {
 }
 
 show_summary() {
-    local summary_heading="Installers cleaned"
+    local summary_heading="安装包清理完成"
     local -a summary_details=()
     local dry_run_mode="${MOLE_DRY_RUN:-0}"
 
@@ -664,10 +664,10 @@ show_summary() {
             summary_details+=("Would remove ${GREEN}$total_deleted${NC} installers, free ${GREEN}${freed_mb}MB${NC}")
         else
             summary_details+=("Removed ${GREEN}$total_deleted${NC} installers, freed ${GREEN}${freed_mb}MB${NC}")
-            summary_details+=("Your Mac is cleaner now!")
+            summary_details+=("您的 Mac 现在更干净了！")
         fi
     else
-        summary_details+=("No installers were removed")
+        summary_details+=("未删除任何安装包")
     fi
 
     print_summary_block "$summary_heading" "${summary_details[@]}"
