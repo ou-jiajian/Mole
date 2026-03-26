@@ -44,6 +44,24 @@ setup() {
     [[ -n "$result" ]]
 }
 
+@test "cleanup_result_color_kb switches from yellow to green at 1 GB" {
+    run env HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" bash --noprofile --norc <<'EOF'
+set -euo pipefail
+source "$PROJECT_ROOT/lib/core/common.sh"
+
+below_threshold_kb=$(((MOLE_ONE_GB_BYTES - 1) / 1024))
+at_threshold_kb=$(((MOLE_ONE_GB_BYTES + 1023) / 1024))
+
+if [[ "$(cleanup_result_color_kb "$below_threshold_kb")" == "$YELLOW" ]] &&
+    [[ "$(cleanup_result_color_kb "$at_threshold_kb")" == "$GREEN" ]]; then
+    echo "ok"
+fi
+EOF
+
+    [ "$status" -eq 0 ]
+    [ "$output" = "ok" ]
+}
+
 @test "log_info prints message and appends to log file" {
     local message="Informational message from test"
     local stdout_output
@@ -84,7 +102,10 @@ EOF
 }
 
 @test "should_protect_path protects Mole runtime logs" {
-    result="$(HOME="$HOME" bash --noprofile --norc -c "source '$PROJECT_ROOT/lib/core/common.sh'; should_protect_path '$HOME/Library/Logs/mole/operations.log' && echo protected || echo not-protected")"
+    result="$(
+        HOME="$HOME" PROJECT_ROOT="$PROJECT_ROOT" bash --noprofile --norc -c \
+            'source "$PROJECT_ROOT/lib/core/common.sh"; should_protect_path "$HOME/Library/Logs/mole/operations.log" && echo protected || echo not-protected'
+    )"
     [ "$result" = "protected" ]
 }
 
@@ -241,7 +262,7 @@ EOF
 
     PATH="$fake_bin:$PATH" PROJECT_ROOT="$PROJECT_ROOT" HOME="$HOME" \
         /usr/bin/script -q /dev/null /bin/bash --noprofile --norc -c \
-        'source "$PROJECT_ROOT/lib/core/common.sh"; start_inline_spinner "Testing..."; /bin/sleep 0.15; stop_inline_spinner' \
+        "source \"\$PROJECT_ROOT/lib/core/common.sh\"; start_inline_spinner \"Testing...\"; /bin/sleep 0.15; stop_inline_spinner" \
         > /dev/null 2>&1
 
     [ ! -f "$marker" ]

@@ -7,18 +7,19 @@ show_clean_help() {
     echo ""
     echo "选项:"
     echo "  --dry-run, -n     预览清理效果，不做任何修改"
+    echo "  --external PATH   清理已挂载外部卷的系统元数据"
     echo "  --whitelist       管理受保护的路径"
     echo "  --debug           显示详细的操作日志"
-    echo "  -h, --help       显示此帮助信息"
+    echo "  -h, --help        显示此帮助信息"
 }
 
 show_installer_help() {
     echo "用法: mo installer [选项]"
     echo ""
-    echo "查找并删除安装包文件 (.dmg, .pkg, .iso, .xip, .zip)。"
+    echo "查找并删除安装包文件（.dmg, .pkg, .iso, .xip, .zip）。"
     echo ""
     echo "选项:"
-    echo "  --dry-run         预览安装包清理，不做任何修改"
+    echo "  --dry-run         预览清理效果，不做任何修改"
     echo "  --debug           显示详细的操作日志"
     echo "  -h, --help        显示此帮助信息"
 }
@@ -30,7 +31,7 @@ show_optimize_help() {
     echo ""
     echo "选项:"
     echo "  --dry-run         预览优化效果，不做任何修改"
-    echo "  --whitelist       管理受保护的项"
+    echo "  --whitelist       管理受保护的项目"
     echo "  --debug           显示详细的操作日志"
     echo "  -h, --help        显示此帮助信息"
 }
@@ -38,24 +39,24 @@ show_optimize_help() {
 show_touchid_help() {
     echo "用法: mo touchid [命令]"
     echo ""
-    echo "配置 Touch ID 用于 sudo 身份验证。"
+    echo "配置 Touch ID 用于 sudo 认证。"
     echo ""
     echo "命令:"
-    echo "  enable            启用 Touch ID 用于 sudo"
-    echo "  disable           禁用 Touch ID 用于 sudo"
+    echo "  enable            启用 Touch ID for sudo"
+    echo "  disable           禁用 Touch ID for sudo"
     echo "  status            显示当前 Touch ID 状态"
     echo ""
     echo "选项:"
-    echo "  --dry-run         预览 Touch ID 更改，不修改 sudo 配置"
+    echo "  --dry-run         预览更改，不修改 sudo 配置"
     echo "  -h, --help        显示此帮助信息"
     echo ""
-    echo "如果未提供命令，将显示交互式菜单。"
+    echo "如未提供命令，将显示交互式菜单。"
 }
 
 show_uninstall_help() {
     echo "用法: mo uninstall [选项]"
     echo ""
-    echo "交互式卸载应用及其残留文件。"
+    echo "交互式卸载应用程序及其残留文件。"
     echo ""
     echo "选项:"
     echo "  --dry-run         预览卸载效果，不做任何修改"

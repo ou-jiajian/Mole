@@ -1,7 +1,7 @@
 #!/bin/bash
-# Mole - 优化命令。
-# 运行系统维护检查和修复。
-# 支持预览模式。
+# Mole - Optimize command.
+# Runs system maintenance checks and fixes.
+# Supports dry-run where applicable.
 
 set -euo pipefail
 
@@ -25,7 +25,7 @@ source "$SCRIPT_DIR/lib/manage/whitelist.sh"
 
 print_header() {
     printf '\n'
-    echo -e "${PURPLE_BOLD}优化和检查${NC}"
+    echo -e "${PURPLE_BOLD}Optimize and Check${NC}"
 }
 
 # Bash-native JSON parsing helpers (no jq dependency).
@@ -292,8 +292,8 @@ cleanup_path() {
             echo -e "${GREEN}${ICON_SUCCESS}${NC} $label"
         fi
     else
-        echo -e "${GRAY}${ICON_WARNING}${NC} 已跳过 $label${NC}"
-        echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}请在系统设置中授予终端完全磁盘访问权限，然后重试${NC}"
+        echo -e "${GRAY}${ICON_WARNING}${NC} Skipped $label${NC}"
+        echo -e "${GRAY}${ICON_REVIEW}${NC} ${GRAY}Grant Full Disk Access to your terminal, then retry${NC}"
     fi
 }
 
@@ -312,11 +312,8 @@ collect_security_fix_actions() {
             SECURITY_FIXES+=("firewall|Enable macOS firewall")
         fi
     fi
-    if [[ "${GATEKEEPER_DISABLED:-}" == "true" ]]; then
-        if ! is_whitelisted "gatekeeper"; then
-            SECURITY_FIXES+=("gatekeeper|Enable Gatekeeper, app download protection")
-        fi
-    fi
+    # Gatekeeper state is intentionally user-managed. Optimize may report it,
+    # but it must not change the user's "Anywhere" preference.
     if touchid_supported && ! touchid_configured; then
         if ! is_whitelisted "check_touchid"; then
             SECURITY_FIXES+=("touchid|Enable Touch ID for sudo")
@@ -332,19 +329,19 @@ ask_for_security_fixes() {
     fi
 
     echo ""
-    echo -e "${BLUE}安全修复${NC}"
+    echo -e "${BLUE}SECURITY FIXES${NC}"
     for entry in "${SECURITY_FIXES[@]}"; do
         IFS='|' read -r _ label <<< "$entry"
         echo -e "  ${ICON_LIST} $label"
     done
     echo ""
     export MOLE_SECURITY_FIXES_SHOWN=true
-    echo -ne "${GRAY}${ICON_REVIEW}${NC} ${YELLOW}现在应用？${NC} ${GRAY}回车确认 / 空格取消${NC}: "
+    echo -ne "${GRAY}${ICON_REVIEW}${NC} ${YELLOW}Apply now?${NC} ${GRAY}Enter confirm / Space cancel${NC}: "
 
     local key
     if ! key=$(read_key); then
         export MOLE_SECURITY_FIXES_SKIPPED=true
-        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} 安全修复已跳过"
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Security fixes skipped"
         echo ""
         return 1
     fi
@@ -354,7 +351,7 @@ ask_for_security_fixes() {
         return 0
     else
         export MOLE_SECURITY_FIXES_SKIPPED=true
-        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} 安全修复已跳过"
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Security fixes skipped"
         echo ""
         return 1
     fi
@@ -366,7 +363,7 @@ apply_firewall_fix() {
         FIREWALL_DISABLED=false
         return 0
     fi
-    echo -e "  ${GRAY}${ICON_WARNING}${NC} 启用防火墙失败，请检查权限"
+    echo -e "  ${GRAY}${ICON_WARNING}${NC} Failed to enable firewall, check permissions"
     return 1
 }
 
@@ -389,7 +386,7 @@ apply_touchid_fix() {
 
 perform_security_fixes() {
     if ! ensure_sudo_session "Security changes require admin access"; then
-        echo -e "${GRAY}${ICON_WARNING}${NC} 已跳过安全修复，sudo 被拒绝"
+        echo -e "${GRAY}${ICON_WARNING}${NC} Skipped security fixes, sudo denied"
         return 1
     fi
 
@@ -399,9 +396,6 @@ perform_security_fixes() {
         case "$action" in
             firewall)
                 apply_firewall_fix && ((applied++))
-                ;;
-            gatekeeper)
-                apply_gatekeeper_fix && ((applied++))
                 ;;
             touchid)
                 apply_touchid_fix && ((applied++))
@@ -464,12 +458,12 @@ main() {
 
     # Dry-run indicator.
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} 预览模式${NC}，不会修改任何文件\n"
+        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, No files will be modified\n"
     fi
 
     if ! command -v bc > /dev/null 2>&1; then
         echo -e "${YELLOW}${ICON_ERROR}${NC} Missing dependency: bc"
-        echo -e "${GRAY}安装方法: ${GREEN}brew install bc${NC}"
+        echo -e "${GRAY}Install with: ${GREEN}brew install bc${NC}"
         exit 1
     fi
 
@@ -510,7 +504,7 @@ main() {
                 IFS=', '
                 echo "${CURRENT_WHITELIST_PATTERNS[*]}"
             )
-            echo -e "${ICON_ADMIN} 当前白名单: ${patterns_list}"
+            echo -e "${ICON_ADMIN} Active Whitelist: ${patterns_list}"
         fi
     fi
 

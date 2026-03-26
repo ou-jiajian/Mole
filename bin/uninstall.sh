@@ -135,6 +135,16 @@ uninstall_resolve_display_name() {
     if [[ "$display_name" == /* ]]; then
         display_name="$app_name"
     fi
+
+    # Keep versioned bundle names when metadata collapses distinct installs.
+    if [[ -n "$display_name" && "$app_name" == "$display_name"* && "$app_name" != "$display_name" ]]; then
+        local suffix
+        suffix="${app_name#"$display_name"}"
+        if [[ "$suffix" == *[0-9]* ]]; then
+            display_name="$app_name"
+        fi
+    fi
+
     display_name="${display_name%.app}"
     display_name="${display_name//|/-}"
     display_name="${display_name//[$'\t\r\n']/}"
@@ -469,12 +479,11 @@ scan_applications() {
         while IFS= read -r -d '' app_path; do
             if [[ ! -e "$app_path" ]]; then continue; fi
 
-            local app_name
-            app_name=$(basename "$app_path" .app)
+            local app_name="${app_path##*/}"
+            app_name="${app_name%.app}"
 
             # Skip nested apps inside another .app bundle.
-            local parent_dir
-            parent_dir=$(dirname "$app_path")
+            local parent_dir="${app_path%/*}"
             if [[ "$parent_dir" == *".app" || "$parent_dir" == *".app/"* ]]; then
                 continue
             fi
@@ -485,9 +494,10 @@ scan_applications() {
                 if [[ -n "$link_target" ]]; then
                     local resolved_target="$link_target"
                     if [[ "$link_target" != /* ]]; then
-                        local link_dir
-                        link_dir=$(dirname "$app_path")
-                        resolved_target=$(cd "$link_dir" 2> /dev/null && cd "$(dirname "$link_target")" 2> /dev/null && pwd)/$(basename "$link_target") 2> /dev/null || echo ""
+                        local link_dir="${app_path%/*}"
+                        local _link_parent="${link_target%/*}"
+                        [[ "$_link_parent" == "$link_target" ]] && _link_parent="."
+                        resolved_target=$(cd "$link_dir" 2> /dev/null && cd "$_link_parent" 2> /dev/null && pwd)/"${link_target##*/}" 2> /dev/null || echo ""
                     fi
                     case "$resolved_target" in
                         /System/* | /usr/bin/* | /usr/lib/* | /bin/* | /sbin/* | /private/etc/*)
@@ -661,7 +671,7 @@ scan_applications() {
         fi
 
         local final_size_kb=0
-        local final_size="N/A"
+        local final_size="--"
         if [[ "$cached_size_kb" =~ ^[0-9]+$ && $cached_size_kb -gt 0 ]]; then
             final_size_kb="$cached_size_kb"
             final_size=$(bytes_to_human "$((cached_size_kb * 1024))")
