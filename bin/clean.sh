@@ -1076,10 +1076,10 @@ perform_cleanup() {
     fi
 
     if [[ "$test_mode_enabled" == "true" ]]; then
-        local summary_heading="Test mode complete"
+        local summary_heading="测试模式完成"
         local -a summary_details
         summary_details=()
-        summary_details+=("Test mode - no actual cleanup performed")
+        summary_details+=("测试模式 - 未执行实际清理")
         print_summary_block "$summary_heading" "${summary_details[@]}"
         printf '\n'
         return 0
