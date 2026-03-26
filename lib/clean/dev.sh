@@ -31,7 +31,7 @@ clean_dev_npm() {
     local npm_cache_path="$npm_default_cache"
 
     if command -v npm > /dev/null 2>&1; then
-        clean_tool_cache "npm cache" npm cache clean --force
+        clean_tool_cache "npm cache (npm 缓存)" npm cache clean --force
 
         start_section_spinner "Checking npm cache path..."
         npm_cache_path=$(run_with_timeout 2 npm config get cache 2> /dev/null) || npm_cache_path=""
@@ -75,7 +75,7 @@ clean_dev_npm() {
     local pnpm_default_store=~/Library/pnpm/store
     # Check if pnpm is actually usable (not just Corepack shim)
     if command -v pnpm > /dev/null 2>&1 && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm --version > /dev/null 2>&1; then
-        COREPACK_ENABLE_DOWNLOAD_PROMPT=0 clean_tool_cache "pnpm cache" pnpm store prune
+        COREPACK_ENABLE_DOWNLOAD_PROMPT=0 clean_tool_cache "pnpm cache (pnpm 缓存)" pnpm store prune
         local pnpm_store_path
         start_section_spinner "Checking store path..."
         pnpm_store_path=$(COREPACK_ENABLE_DOWNLOAD_PROMPT=0 run_with_timeout 2 pnpm store path 2> /dev/null) || pnpm_store_path=""
@@ -97,7 +97,7 @@ clean_dev_npm() {
 clean_dev_python() {
     # Check pip3 is functional (not just macOS stub that triggers CLT install dialog)
     if command -v pip3 > /dev/null 2>&1 && pip3 --version > /dev/null 2>&1; then
-        clean_tool_cache "pip cache" bash -c 'pip3 cache purge > /dev/null 2>&1 || true'
+        clean_tool_cache "pip cache (pip 缓存)" bash -c 'pip3 cache purge > /dev/null 2>&1 || true'
         note_activity
     fi
     safe_clean ~/.pyenv/cache/* "pyenv cache (pyenv 缓存)"
@@ -136,7 +136,7 @@ clean_dev_go() {
     fi
 
     if [[ "$build_protected" != "true" && "$mod_protected" != "true" ]]; then
-        clean_tool_cache "Go cache" bash -c 'go clean -modcache > /dev/null 2>&1 || true; go clean -cache > /dev/null 2>&1 || true'
+        clean_tool_cache "Go cache (Go 缓存)" bash -c 'go clean -modcache > /dev/null 2>&1 || true; go clean -cache > /dev/null 2>&1 || true'
     elif [[ "$build_protected" == "true" ]]; then
         clean_tool_cache "Go module cache" bash -c 'go clean -modcache > /dev/null 2>&1 || true'
         echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Go build cache · skipped (whitelist)"
@@ -219,7 +219,7 @@ check_rust_toolchains() {
 
     check_multiple_versions \
         "$HOME/.rustup/toolchains" \
-        "Rust toolchains" \
+        "Rust toolchains (Rust 工具链)" \
         "rustup toolchain list"
 }
 # Docker caches (guarded by daemon check).
@@ -286,8 +286,8 @@ clean_dev_frontend() {
 check_android_ndk() {
     check_multiple_versions \
         "$HOME/Library/Android/sdk/ndk" \
-        "Android NDK versions" \
-        "Android Studio → SDK Manager"
+        "Android NDK versions (Android NDK 版本)" \
+        "Android Studio → SDK Manager (Android Studio → SDK 管理器)"
 }
 
 clean_xcode_documentation_cache() {
@@ -337,7 +337,7 @@ clean_xcode_documentation_cache() {
     fi
 
     if [[ "${DRY_RUN:-false}" == "true" ]]; then
-        safe_clean "${stale_entries[@]}" "Xcode documentation cache (old indexes)"
+        safe_clean "${stale_entries[@]}" "Xcode documentation cache (Xcode 文档缓存，旧索引)"
         note_activity
         return 0
     fi
@@ -694,7 +694,7 @@ clean_dev_mobile() {
         local simctl_available=true
         if ! xcrun simctl list devices > /dev/null 2>&1; then
             debug_log "simctl not accessible or CoreSimulator service not running"
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode unavailable simulators · simctl not available"
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode unavailable simulators · simctl 不可用"
             note_activity
             simctl_available=false
         fi
@@ -829,15 +829,15 @@ clean_dev_mobile() {
     clean_xcode_device_support ~/Library/Developer/Xcode/tvOS\ DeviceSupport "tvOS DeviceSupport"
     # Simulator runtime caches.
     safe_clean ~/Library/Developer/CoreSimulator/Profiles/Runtimes/*/Contents/Resources/RuntimeRoot/System/Library/Caches/* "Simulator runtime cache"
-    safe_clean ~/Library/Caches/Google/AndroidStudio*/* "Android Studio cache"
+    safe_clean ~/Library/Caches/Google/AndroidStudio*/* "Android Studio cache (Android Studio 缓存)"
     # safe_clean ~/Library/Caches/CocoaPods/* "CocoaPods cache"
     # safe_clean ~/.cache/flutter/* "Flutter cache"
-    safe_clean ~/.android/build-cache/* "Android build cache"
-    safe_clean ~/.android/cache/* "Android SDK cache"
-    safe_clean ~/Library/Developer/Xcode/UserData/IB\ Support/* "Xcode Interface Builder cache"
+    safe_clean ~/.android/build-cache/* "Android build cache (Android 构建缓存)"
+    safe_clean ~/.android/cache/* "Android SDK cache (Android SDK 缓存)"
+    safe_clean ~/Library/Developer/Xcode/UserData/IB\ Support/* "Xcode Interface Builder cache (Xcode IB 缓存)"
     safe_clean ~/.cache/swift-package-manager/* "Swift package manager cache"
     # Expo/React Native caches (preserve state.json which contains auth tokens).
-    safe_clean ~/.expo/expo-go/* "Expo Go cache"
+    safe_clean ~/.expo/expo-go/* "Expo Go cache (Expo Go 缓存)"
     safe_clean ~/.expo/android-apk-cache/* "Expo Android APK cache"
     safe_clean ~/.expo/ios-simulator-app-cache/* "Expo iOS simulator app cache"
     safe_clean ~/.expo/native-modules-cache/* "Expo native modules cache"
@@ -966,7 +966,7 @@ clean_dev_jetbrains_toolbox() {
 }
 # Other language tool caches.
 clean_dev_other_langs() {
-    safe_clean ~/.bundle/cache/* "Ruby Bundler cache"
+    safe_clean ~/.bundle/cache/* "Ruby Bundler cache (Ruby Bundler 缓存)"
     safe_clean ~/.composer/cache/* "PHP Composer cache"
     safe_clean ~/.nuget/packages/* "NuGet packages cache"
     # safe_clean ~/.pub-cache/* "Dart Pub cache"
@@ -1112,14 +1112,14 @@ clean_developer_tools() {
     clean_code_editors
 
     # Homebrew
-    safe_clean ~/Library/Caches/Homebrew/* "Homebrew cache"
+    safe_clean ~/Library/Caches/Homebrew/* "Homebrew cache (Homebrew 缓存)"
     local brew_lock_dirs=(
         "/opt/homebrew/var/homebrew/locks"
         "/usr/local/var/homebrew/locks"
     )
     for lock_dir in "${brew_lock_dirs[@]}"; do
         if [[ -d "$lock_dir" && -w "$lock_dir" ]]; then
-            safe_clean "$lock_dir"/* "Homebrew lock files"
+            safe_clean "$lock_dir"/* "Homebrew lock files (Homebrew 锁文件)"
         elif [[ -d "$lock_dir" ]]; then
             if find "$lock_dir" -mindepth 1 -maxdepth 1 -print -quit 2> /dev/null | grep -q .; then
                 debug_log "Skipping read-only Homebrew locks in $lock_dir"

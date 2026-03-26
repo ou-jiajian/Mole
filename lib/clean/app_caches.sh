@@ -204,7 +204,7 @@ clean_task_apps() {
 }
 # Shell/terminal utilities.
 clean_shell_utils() {
-    safe_clean ~/.zcompdump* "Zsh completion cache"
+    safe_clean ~/.zcompdump* "Zsh completion cache (Zsh 自动补全缓存)"
     safe_clean ~/.lesshst "less history"
     safe_clean ~/.viminfo.tmp "Vim temporary files"
     safe_clean ~/.wget-hsts "wget HSTS cache"

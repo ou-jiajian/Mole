@@ -3,10 +3,10 @@
 set -euo pipefail
 clean_user_essentials() {
     start_section_spinner "Scanning caches..."
-    safe_clean ~/Library/Caches/* "User app cache"
+    safe_clean ~/Library/Caches/* "User app cache (用户应用缓存)"
     stop_section_spinner
 
-    safe_clean ~/Library/Logs/* "User app logs"
+    safe_clean ~/Library/Logs/* "User app logs (用户应用日志)"
 
     if ! is_path_whitelisted "$HOME/.Trash"; then
         local trash_count
@@ -26,7 +26,7 @@ clean_user_essentials() {
         [[ "$trash_count" =~ ^[0-9]+$ ]] || trash_count="0"
 
         if [[ "$DRY_RUN" == "true" ]]; then
-            [[ $trash_count -gt 0 ]] && echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Trash · would empty, $trash_count items" || echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · already empty"
+            [[ $trash_count -gt 0 ]] && echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Trash · 将清空，$trash_count 个项目" || echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · 已为空"
         elif [[ $trash_count -gt 0 ]]; then
             local emptied_via_finder=false
             # Skip AppleScript during tests to avoid permission dialogs
@@ -35,7 +35,7 @@ clean_user_essentials() {
             else
                 if run_with_timeout 5 osascript -e 'tell application "Finder" to empty trash' > /dev/null 2>&1; then
                     emptied_via_finder=true
-                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · emptied, $trash_count items"
+                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · 已清空，$trash_count 个项目"
                     note_activity
                 fi
             fi
@@ -53,7 +53,7 @@ clean_user_essentials() {
                 fi
             fi
         else
-            echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · already empty"
+            echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · 已为空"
         fi
     fi
 
@@ -483,7 +483,7 @@ clean_support_app_data() {
     if pgrep -x "Messages" > /dev/null 2>&1; then
         echo -e "  ${GRAY}${ICON_WARNING}${NC} Messages is running · preview cache cleanup skipped"
     else
-        safe_clean ~/Library/Messages/StickerCache/* "Messages sticker cache"
+        safe_clean ~/Library/Messages/StickerCache/* "Messages sticker cache (Messages 表情包缓存)"
         safe_clean ~/Library/Messages/Caches/Previews/Attachments/* "Messages preview attachment cache"
         safe_clean ~/Library/Messages/Caches/Previews/StickerCache/* "Messages preview sticker cache"
     fi
@@ -555,7 +555,7 @@ clean_app_caches() {
     _clean_incomplete_downloads
     safe_clean ~/Library/Autosave\ Information/* "Autosave information" || true
     safe_clean ~/Library/IdentityCaches/* "Identity caches" || true
-    safe_clean ~/Library/Suggestions/* "Siri suggestions cache" || true
+    safe_clean ~/Library/Suggestions/* "Siri suggestions cache (Siri 建议缓存)" || true
     safe_clean ~/Library/Calendars/Calendar\ Cache "Calendar cache" || true
     safe_clean ~/Library/Application\ Support/AddressBook/Sources/*/Photos.cache "Address Book photo cache" || true
     clean_support_app_data
@@ -985,14 +985,14 @@ clean_external_volume_target() {
 
 # Browser caches (Safari/Chrome/Edge/Firefox).
 clean_browsers() {
-    safe_clean ~/Library/Caches/com.apple.Safari/* "Safari cache"
+    safe_clean ~/Library/Caches/com.apple.Safari/* "Safari cache (Safari 缓存)"
     # Chrome/Chromium.
     safe_clean ~/Library/Caches/Google/Chrome/* "Chrome cache"
     safe_clean ~/Library/Application\ Support/Google/Chrome/*/Application\ Cache/* "Chrome app cache"
-    safe_clean ~/Library/Application\ Support/Google/Chrome/*/GPUCache/* "Chrome GPU cache"
-    safe_clean ~/Library/Application\ Support/Google/Chrome/component_crx_cache/* "Chrome component CRX cache"
-    safe_clean ~/Library/Application\ Support/Google/GoogleUpdater/crx_cache/* "GoogleUpdater CRX cache"
-    safe_clean ~/Library/Application\ Support/Google/GoogleUpdater/*.old "GoogleUpdater old files"
+    safe_clean ~/Library/Application\ Support/Google/Chrome/*/GPUCache/* "Chrome GPU cache (Chrome GPU 缓存)"
+    safe_clean ~/Library/Application\ Support/Google/Chrome/component_crx_cache/* "Chrome component CRX cache (Chrome 扩展缓存)"
+    safe_clean ~/Library/Application\ Support/Google/GoogleUpdater/crx_cache/* "GoogleUpdater CRX cache (GoogleUpdater 扩展缓存)"
+    safe_clean ~/Library/Application\ Support/Google/GoogleUpdater/*.old "GoogleUpdater old files (GoogleUpdater 旧文件)"
     safe_clean ~/Library/Caches/Chromium/* "Chromium cache"
     safe_clean ~/.cache/puppeteer/* "Puppeteer browser cache"
     safe_clean ~/Library/Caches/com.microsoft.edgemac/* "Edge cache"
@@ -1126,7 +1126,7 @@ app_support_item_size_bytes() {
     return 1
 }
 
-# Application Support logs/caches.
+# Application Support logs/caches (应用支持日志/缓存).
 clean_application_support_logs() {
     if [[ ! -d "$HOME/Library/Application Support" ]] || ! ls "$HOME/Library/Application Support" > /dev/null 2>&1; then
         note_activity
@@ -1487,7 +1487,7 @@ clean_apple_silicon_caches() {
     if [[ "${IS_M_SERIES:-false}" != "true" ]]; then
         return 0
     fi
-    start_section "Apple Silicon updates"
+    start_section "Apple Silicon updates (Apple Silicon 更新)"
     safe_clean /Library/Apple/usr/share/rosetta/rosetta_update_bundle "Rosetta 2 cache"
     safe_clean ~/Library/Caches/com.apple.rosetta.update "Rosetta 2 user cache"
     safe_clean ~/Library/Caches/com.apple.amp.mediasevicesd "Apple Silicon media service cache"

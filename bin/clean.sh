@@ -195,7 +195,7 @@ end_section() {
     stop_section_spinner
 
     if [[ "${TRACK_SECTION:-0}" == "1" && "${SECTION_ACTIVITY:-0}" == "0" ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Nothing to clean"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 无需清理"
     fi
     TRACK_SECTION=0
 }
@@ -923,12 +923,12 @@ perform_cleanup() {
 
         if [[ $custom_count -gt 0 || $predefined_count -gt 0 ]]; then
             local summary=""
-            [[ $predefined_count -gt 0 ]] && summary+="$predefined_count core"
+            [[ $predefined_count -gt 0 ]] && summary+="$predefined_count 个核心"
             [[ $custom_count -gt 0 && $predefined_count -gt 0 ]] && summary+=" + "
-            [[ $custom_count -gt 0 ]] && summary+="$custom_count custom"
-            summary+=" patterns active"
+            [[ $custom_count -gt 0 ]] && summary+="$custom_count 个自定义"
+            summary+=" 规则已启用"
 
-            echo -e "${BLUE}${ICON_SUCCESS}${NC} Whitelist: $summary"
+            echo -e "${BLUE}${ICON_SUCCESS}${NC} 白名单：$summary"
 
             if [[ "$DRY_RUN" == "true" ]]; then
                 for pattern in "${WHITELIST_PATTERNS[@]}"; do
@@ -960,13 +960,13 @@ perform_cleanup() {
     set +e
 
     if [[ -n "$EXTERNAL_VOLUME_TARGET" ]]; then
-        start_section "External volume"
+        start_section "External volume (外部卷)"
         clean_external_volume_target "$EXTERNAL_VOLUME_TARGET"
         end_section
     else
         # ===== 1. System =====
         if [[ "$SYSTEM_CLEAN" == "true" ]]; then
-            start_section "System"
+            start_section "System (系统)"
             clean_deep_system
             clean_local_snapshots
             end_section
@@ -980,49 +980,49 @@ perform_cleanup() {
         fi
 
         # ===== 2. User essentials =====
-        start_section "User essentials"
+        start_section "User essentials (用户文件)"
         clean_user_essentials
         clean_finder_metadata
         end_section
 
         # ===== 3. App caches (merged sandboxed and standard app caches) =====
-        start_section "App caches"
+        start_section "App caches (应用缓存)"
         clean_app_caches
         end_section
 
         # ===== 4. Browsers =====
-        start_section "Browsers"
+        start_section "Browsers (浏览器)"
         clean_browsers
         end_section
 
         # ===== 5. Cloud & Office =====
-        start_section "Cloud & Office"
+        start_section "Cloud & Office (云盘与办公)"
         clean_cloud_storage
         clean_office_applications
         end_section
 
         # ===== 6. Developer tools (merged CLI and GUI tooling) =====
-        start_section "Developer tools"
+        start_section "Developer tools (开发工具)"
         clean_developer_tools
         end_section
 
         # ===== 7. Applications =====
-        start_section "Applications"
+        start_section "Applications (应用程序)"
         clean_user_gui_applications
         end_section
 
         # ===== 8. Virtualization =====
-        start_section "Virtualization"
+        start_section "Virtualization (虚拟化)"
         clean_virtualization_tools
         end_section
 
         # ===== 9. Application Support =====
-        start_section "Application Support"
+        start_section "Application Support (应用数据)"
         clean_application_support_logs
         end_section
 
         # ===== 10. Orphaned data =====
-        start_section "Orphaned data"
+        start_section "Orphaned data (孤儿数据)"
         clean_orphaned_app_data
         clean_orphaned_system_services
         show_user_launch_agent_hint_notice
@@ -1032,27 +1032,27 @@ perform_cleanup() {
         clean_apple_silicon_caches
 
         # ===== 12. Device backups =====
-        start_section "Device backups"
+        start_section "Device backups (设备备份)"
         check_ios_device_backups
         end_section
 
         # ===== 13. Time Machine =====
-        start_section "Time Machine"
+        start_section "Time Machine (时间机器)"
         clean_time_machine_failed_backups
         end_section
 
         # ===== 14. Large files =====
-        start_section "Large files"
+        start_section "Large files (大文件)"
         check_large_file_candidates
         end_section
 
         # ===== 15. System Data clues =====
-        start_section "System Data clues"
+        start_section "System Data clues (系统数据线索)"
         show_system_data_hint_notice
         end_section
 
         # ===== 16. Project artifacts =====
-        start_section "Project artifacts"
+        start_section "Project artifacts (项目构建产物)"
         show_project_artifact_hint_notice
         end_section
     fi
@@ -1091,7 +1091,7 @@ perform_cleanup() {
             } >> "$EXPORT_LIST_FILE"
 
             summary_details+=("Detailed file list: ${GRAY}$EXPORT_LIST_FILE${NC}")
-            summary_details+=("Use ${GRAY}mo clean --whitelist${NC} to add protection rules")
+            summary_details+=("使用 ${GRAY}mo clean --whitelist${NC} 添加保护规则")
         else
             local summary_line="Space freed: ${GREEN}${freed_size_human}${NC}"
 
