@@ -3,10 +3,10 @@
 set -euo pipefail
 clean_user_essentials() {
     start_section_spinner "Scanning caches..."
-    safe_clean ~/Library/Caches/* "User app cache (用户应用缓存)"
+    safe_clean ~/Library/Caches/* "User app cache"
     stop_section_spinner
 
-    safe_clean ~/Library/Logs/* "User app logs (用户应用日志)"
+    safe_clean ~/Library/Logs/* "User app logs"
 
     if ! is_path_whitelisted "$HOME/.Trash"; then
         local trash_count
@@ -26,15 +26,12 @@ clean_user_essentials() {
         [[ "$trash_count" =~ ^[0-9]+$ ]] || trash_count="0"
 
         if [[ "$DRY_RUN" == "true" ]]; then
-            [[ $trash_count -gt 0 ]] && echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} 废纸篓 · 将清空，$trash_count 项" || echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 废纸篓 · 已清空"
+            [[ $trash_count -gt 0 ]] && echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Trash · would empty, $trash_count items" || echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · already empty"
         elif [[ $trash_count -gt 0 ]]; then
             local emptied_via_finder=false
             # Skip AppleScript during tests to avoid permission dialogs
             if [[ "${MOLE_TEST_MODE:-0}" == "1" || "${MOLE_TEST_NO_AUTH:-0}" == "1" ]]; then
                 debug_log "Skipping Finder AppleScript in test mode"
-            elif run_with_timeout 5 osascript -e 'tell application "Finder" to empty trash' > /dev/null 2>&1; then
-                echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 废纸篓 · 已清空，$trash_count 项"
-                note_activity
             else
                 if run_with_timeout 5 osascript -e 'tell application "Finder" to empty trash' > /dev/null 2>&1; then
                     emptied_via_finder=true
@@ -51,12 +48,12 @@ clean_user_essentials() {
                     fi
                 done < <(command find "$HOME/.Trash" -mindepth 1 -maxdepth 1 -print0 2> /dev/null || true)
                 if [[ $cleaned_count -gt 0 ]]; then
-                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 废纸篓 · 已清空，$cleaned_count 项"
+                    echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · emptied, $cleaned_count items"
                     note_activity
                 fi
             fi
         else
-            echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 废纸篓 · 已清空"
+            echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Trash · already empty"
         fi
     fi
 
@@ -174,7 +171,7 @@ clean_chrome_old_versions() {
 
     # Match the exact Chrome process name to avoid false positives
     if pgrep -x "Google Chrome" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Google Chrome 正在运行 · 旧版本清理已跳过"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Google Chrome running · old versions cleanup skipped"
         return 0
     fi
 
@@ -262,7 +259,7 @@ clean_edge_old_versions() {
 
     # Match the exact Edge process name to avoid false positives (e.g., Microsoft Teams)
     if pgrep -x "Microsoft Edge" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge 正在运行 · 旧版本清理已跳过"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge running · old versions cleanup skipped"
         return 0
     fi
 
@@ -341,7 +338,7 @@ clean_edge_updater_old_versions() {
     [[ -d "$updater_dir" ]] || return 0
 
     if pgrep -x "Microsoft Edge" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge 正在运行 · updater 清理已跳过"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Microsoft Edge running · updater cleanup skipped"
         return 0
     fi
 
@@ -473,7 +470,6 @@ clean_support_app_data() {
         safe_find_delete "$idle_assets_dir" "*" "$support_age_days" "f" || true
     fi
 
-<<<<<<< Updated upstream
     # Clean system-level idle/aerial screensaver videos (macOS re-downloads as needed).
     local sys_idle_assets_dir="/Library/Application Support/com.apple.idleassetsd/Customer"
     # Skip sudo operations during tests to avoid password prompts
@@ -483,16 +479,13 @@ clean_support_app_data() {
         fi
     fi
 
-    # Clean old aerial wallpaper videos (can be large, safe to remove).
-    safe_clean ~/Library/Application\ Support/com.apple.wallpaper/aerials/videos/* "Aerial wallpaper videos (航拍壁纸视频)"
-
     # Do not touch Messages attachments, only preview/sticker caches.
     if pgrep -x "Messages" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Messages 正在运行 · 预览缓存清理已跳过"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Messages is running · preview cache cleanup skipped"
     else
-        safe_clean ~/Library/Messages/StickerCache/* "Messages sticker cache (Messages 表情包缓存)"
-        safe_clean ~/Library/Messages/Caches/Previews/Attachments/* "Messages preview attachment cache (Messages 预览附件缓存)"
-        safe_clean ~/Library/Messages/Caches/Previews/StickerCache/* "Messages preview sticker cache (Messages 预览表情包缓存)"
+        safe_clean ~/Library/Messages/StickerCache/* "Messages sticker cache"
+        safe_clean ~/Library/Messages/Caches/Previews/Attachments/* "Messages preview attachment cache"
+        safe_clean ~/Library/Messages/Caches/Previews/StickerCache/* "Messages preview sticker cache"
     fi
 }
 
@@ -551,7 +544,6 @@ clean_app_caches() {
     start_section_spinner "Scanning app caches..."
 
     # macOS system caches (merged from clean_macos_system_caches)
-<<<<<<< Updated upstream
     safe_clean ~/Library/Saved\ Application\ State/* "Saved application states" || true
     safe_clean ~/Library/Caches/com.apple.photoanalysisd "Photo analysis cache" || true
     safe_clean ~/Library/Caches/com.apple.akd "Apple ID cache" || true
@@ -566,24 +558,16 @@ clean_app_caches() {
     safe_clean ~/Library/Suggestions/* "Siri suggestions cache" || true
     safe_clean ~/Library/Calendars/Calendar\ Cache "Calendar cache" || true
     safe_clean ~/Library/Application\ Support/AddressBook/Sources/*/Photos.cache "Address Book photo cache" || true
-    safe_clean ~/Library/Saved\ Application\ State/* "Saved application states (应用保存状态)" || true
-    safe_clean ~/Library/Caches/com.apple.photoanalysisd "Photo analysis cache (照片分析缓存)" || true
-    safe_clean ~/Library/Caches/com.apple.akd "Apple ID cache (Apple ID 缓存)" || true
-    safe_clean ~/Library/Caches/com.apple.WebKit.Networking/* "WebKit network cache (WebKit 网络缓存)" || true
-    safe_clean ~/Library/DiagnosticReports/* "Diagnostic reports (诊断报告)" || true
-    safe_clean ~/Library/Caches/com.apple.QuickLook.thumbnailcache "QuickLook thumbnails (QuickLook 缩略图)" || true
-    safe_clean ~/Library/Caches/Quick\ Look/* "QuickLook cache (QuickLook 缓存)" || true
-    safe_clean ~/Library/Caches/com.apple.iconservices* "Icon services cache (图标服务缓存)" || true
     clean_support_app_data
 
     # Stop initial scan indicator before entering per-group scans.
     stop_section_spinner
 
     # Sandboxed app caches
-    safe_clean ~/Library/Containers/com.apple.wallpaper.agent/Data/Library/Caches/* "Wallpaper agent cache (壁纸代理缓存)"
-    safe_clean ~/Library/Containers/com.apple.mediaanalysisd/Data/Library/Caches/* "Media analysis cache (媒体分析缓存)"
-    safe_clean ~/Library/Containers/com.apple.AppStore/Data/Library/Caches/* "App Store cache (App Store 缓存)"
-    safe_clean ~/Library/Containers/com.apple.configurator.xpc.InternetService/Data/tmp/* "Apple Configurator temp files (Apple Configurator 临时文件)"
+    safe_clean ~/Library/Containers/com.apple.wallpaper.agent/Data/Library/Caches/* "Wallpaper agent cache"
+    safe_clean ~/Library/Containers/com.apple.mediaanalysisd/Data/Library/Caches/* "Media analysis cache"
+    safe_clean ~/Library/Containers/com.apple.AppStore/Data/Library/Caches/* "App Store cache"
+    safe_clean ~/Library/Containers/com.apple.configurator.xpc.InternetService/Data/tmp/* "Apple Configurator temp files"
     local containers_dir="$HOME/Library/Containers"
     [[ ! -d "$containers_dir" ]] && return 0
     start_section_spinner "Scanning sandboxed apps..."
@@ -1001,9 +985,9 @@ clean_external_volume_target() {
 
 # Browser caches (Safari/Chrome/Edge/Firefox).
 clean_browsers() {
-    safe_clean ~/Library/Caches/com.apple.Safari/* "Safari cache (Safari 缓存)"
+    safe_clean ~/Library/Caches/com.apple.Safari/* "Safari cache"
     # Chrome/Chromium.
-    safe_clean ~/Library/Caches/Google/Chrome/* "Chrome cache (Chrome 缓存)"
+    safe_clean ~/Library/Caches/Google/Chrome/* "Chrome cache"
     safe_clean ~/Library/Application\ Support/Google/Chrome/*/Application\ Cache/* "Chrome app cache"
     safe_clean ~/Library/Application\ Support/Google/Chrome/*/GPUCache/* "Chrome GPU cache"
     safe_clean ~/Library/Application\ Support/Google/Chrome/component_crx_cache/* "Chrome component CRX cache"
@@ -1035,7 +1019,7 @@ clean_browsers() {
         firefox_running=true
     fi
     if [[ "$firefox_running" == "true" ]]; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox 正在运行 · 缓存清理已跳过"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox is running · cache cleanup skipped"
     else
         safe_clean ~/Library/Caches/Firefox/* "Firefox cache"
     fi
@@ -1045,7 +1029,7 @@ clean_browsers() {
     safe_clean ~/Library/Caches/com.kagi.kagimacOS/* "Orion cache"
     safe_clean ~/Library/Caches/zen/* "Zen cache"
     if [[ "$firefox_running" == "true" ]]; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox 正在运行 · 个人资料缓存清理已跳过"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Firefox is running · profile cache cleanup skipped"
     else
         safe_clean ~/Library/Application\ Support/Firefox/Profiles/*/cache2/* "Firefox profile cache"
     fi
