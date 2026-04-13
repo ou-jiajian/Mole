@@ -1021,6 +1021,9 @@ main() {
         "completion")
             exec "$SCRIPT_DIR/bin/completion.sh" "${args[@]:1}"
             ;;
+        "check")
+            exec "$SCRIPT_DIR/bin/check.sh" "${args[@]:1}"
+            ;;
         "update")
             local force_update=false
             local nightly_update=false
@@ -1029,8 +1032,8 @@ main() {
                     --force | -f) force_update=true ;;
                     --nightly) nightly_update=true ;;
                     *)
-                        echo "Unknown update option: $arg"
-                        echo "Use 'mole update [--force] [--nightly]' for supported options."
+                        echo "未知的 update 选项：$arg"
+                        echo "可用选项：'mole update [--force] [--nightly]'"
                         exit 1
                         ;;
                 esac
@@ -1044,8 +1047,8 @@ main() {
                 case "$arg" in
                     "--dry-run" | "-n") dry_run_remove=true ;;
                     *)
-                        echo "Unknown remove option: $arg"
-                        echo "Use 'mole remove [--dry-run]' for supported options."
+                        echo "未知的 remove 选项：$arg"
+                        echo "可用选项：'mole remove [--dry-run]'"
                         exit 1
                         ;;
                 esac
@@ -1065,8 +1068,8 @@ main() {
             interactive_main_menu
             ;;
         *)
-            echo "Unknown command: ${args[0]}"
-            echo "Use 'mole --help' for usage information."
+            echo "未知的命令：${args[0]}"
+            echo "使用 'mole --help' 查看帮助信息"
             exit 1
             ;;
     esac

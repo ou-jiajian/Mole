@@ -430,30 +430,30 @@ EOF
         ;;
     *)
         cat << 'EOF'
-Usage: mole completion [bash|zsh|fish]
+用法: mole completion [bash|zsh|fish]
 
-Setup shell tab completion for mole and mo commands.
+为 mole 和 mo 命令设置 Shell 命令补全。
 
-Auto-install:
-  mole completion              # Auto-detect shell and install
-  mole completion --dry-run    # Preview config changes without writing files
+自动安装:
+  mole completion              # 自动检测 shell 并安装
+  mole completion --dry-run   # 预览配置更改，不写入文件
 
-Manual install:
-  mole completion bash         # Generate bash completion script
-  mole completion zsh          # Generate zsh completion script
-  mole completion fish         # Generate fish completion script
+手动安装:
+  mole completion bash         # 生成 bash 补全脚本
+  mole completion zsh          # 生成 zsh 补全脚本
+  mole completion fish         # 生成 fish 补全脚本
 
-Examples:
-  # Auto-install (recommended)
+示例:
+  # 自动安装（推荐）
   mole completion
 
-  # Manual install - Bash
+  # 手动安装 - Bash
   eval "$(mole completion bash)"
 
-  # Manual install - Zsh
+  # 手动安装 - Zsh
   eval "$(mole completion zsh)"
 
-  # Manual install - Fish
+  # 手动安装 - Fish
   mole completion fish | source
 EOF
         exit 1
