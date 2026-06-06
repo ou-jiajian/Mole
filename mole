@@ -649,7 +649,6 @@ remove_mole() {
                 brew_has_mole="true"
             fi
         fi
-    fi
 
     if [[ "$brew_has_mole" == "true" ]] || is_homebrew_install; then
         is_homebrew=true
