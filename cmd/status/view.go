@@ -264,14 +264,14 @@ func renderProcessAlertBar(alerts []ProcessAlert, width int) string {
 	focus := active[0]
 
 	text := fmt.Sprintf(
-		"ALERT %s at %.1f%% for %s (threshold %.1f%%)",
+		"警告 %s 当前 %.1f%% 持续 %s（阈值 %.1f%%）",
 		formatProcessLabel(ProcessInfo{PID: focus.PID, Name: focus.Name}),
 		focus.CPU,
 		focus.Window,
 		focus.Threshold,
 	)
 	if len(active) > 1 {
-		text += fmt.Sprintf(" · +%d more", len(active)-1)
+		text += fmt.Sprintf(" · 还有 %d 个", len(active)-1)
 	}
 
 	return renderBanner(alertBarStyle, text, width)

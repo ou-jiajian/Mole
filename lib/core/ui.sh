@@ -223,7 +223,7 @@ read_key() {
         ' ') echo "SPACE" ;;
         'q' | 'Q') echo "QUIT" ;;
         'R') echo "RETRY" ;;
-        'm' | 'M') echo "MORE" ;;
+        'm' | 'M') echo "更多" ;;
         'v' | 'V') echo "VERSION" ;;
         'u' | 'U') echo "UPDATE" ;;
         't' | 'T') echo "TOUCHID" ;;

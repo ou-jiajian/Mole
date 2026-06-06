@@ -413,9 +413,9 @@ find_orbstack_data_dir() {
 clean_dev_docker() {
     if command -v docker > /dev/null 2>&1; then
         note_activity
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Docker unused data · skipped by default"
-        echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}Review: docker system df${NC}"
-        echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}Prune:  docker system prune --filter until=720h${NC}"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Docker 未使用数据 · 默认跳过"
+        echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}查看: docker system df${NC}"
+        echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${GRAY}清理:  docker system prune --filter until=720h${NC}"
         debug_log "Docker daemon-managed cleanup skipped by default"
     fi
 
@@ -483,7 +483,7 @@ clean_xcode_documentation_cache() {
     [[ -d "$doc_cache_root" ]] || return 0
 
     if pgrep -x "Xcode" > /dev/null 2>&1; then
-        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode is running, skipping documentation cache cleanup"
+        echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode 正在运行，跳过文档缓存清理"
         note_activity
         return 0
     fi
@@ -532,7 +532,7 @@ clean_xcode_documentation_cache() {
 
     if ! has_sudo_session; then
         if ! ensure_sudo_session "Cleaning Xcode documentation cache requires admin access"; then
-            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode documentation cache cleanup skipped (sudo denied)"
+            echo -e "  ${GRAY}${ICON_WARNING}${NC} Xcode 文档缓存清理已跳过 (sudo 被拒绝)"
             note_activity
             return 0
         fi

@@ -126,7 +126,7 @@ update_via_homebrew() {
             run_with_timeout "$MOLE_TIMEOUT_PKG_LIST_SEC" brew list --versions mole 2> /dev/null | awk '{print $2}')
         [[ -z "$installed_version" ]] && installed_version=$(mo --version 2> /dev/null | awk '/Mole version/ {print $3; exit}')
         echo ""
-        echo -e "${GREEN}${ICON_SUCCESS}${NC} Already on latest version, ${installed_version:-$current_version}"
+        echo -e "${GREEN}${ICON_SUCCESS}${NC} 已是最新版本，${installed_version:-$current_version}"
         echo ""
     elif echo "$upgrade_output" | grep -q "Error:"; then
         log_error "Homebrew 升级失败"
@@ -139,7 +139,7 @@ update_via_homebrew() {
             run_with_timeout "$MOLE_TIMEOUT_PKG_LIST_SEC" brew list --versions mole 2> /dev/null | awk '{print $2}')
         [[ -z "$new_version" ]] && new_version=$(mo --version 2> /dev/null | awk '/Mole version/ {print $3; exit}')
         echo ""
-        echo -e "${GREEN}${ICON_SUCCESS}${NC} Updated to latest version, ${new_version:-$current_version}"
+        echo -e "${GREEN}${ICON_SUCCESS}${NC} 已更新到最新版本，${new_version:-$current_version}"
         echo ""
     fi
 
