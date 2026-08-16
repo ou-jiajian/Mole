@@ -6,10 +6,10 @@
 <p align="center">
   <a href="https://github.com/tw93/mole/stargazers"><img src="https://img.shields.io/github/stars/tw93/mole?style=flat-square" alt="Stars"></a>
   <a href="https://github.com/tw93/mole/releases"><img src="https://img.shields.io/github/v/tag/tw93/mole?label=version&style=flat-square" alt="Version"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL_v3-blue.svg?style=flat-square" alt="License"></a>
   <a href="https://github.com/tw93/mole/commits"><img src="https://img.shields.io/github/commit-activity/m/tw93/mole?style=flat-square" alt="Commits"></a>
   <a href="https://twitter.com/HiTw93"><img src="https://img.shields.io/badge/follow-Tw93-red?style=flat-square&logo=Twitter" alt="Twitter"></a>
-  <a href="https://t.me/+GclQS9ZnxyI2ODQ1"><img src="https://img.shields.io/badge/chat-Telegram-blueviolet?style=flat-square&logo=Telegram" alt="Telegram"></a>
+  <a href="https://t.me/+9f9gf4ZrFSQ2OWVl"><img src="https://img.shields.io/badge/chat-Telegram-blueviolet?style=flat-square&logo=Telegram" alt="Telegram"></a>
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 ## Features
 
 - **All-in-one toolkit**: Combines CleanMyMac, AppCleaner, DaisyDisk, and iStat Menus in a **single binary**
-- **Deep cleaning**: Removes caches, logs, browser leftovers, and orphaned app data to **reclaim gigabytes of space**
+- **Deep cleaning**: Removes caches, logs, leftovers, and orphaned app data to **reclaim gigabytes of space**
 - **Smart uninstaller**: Removes apps plus launch agents, preferences, and **hidden remnants**
 - **Disk insights**: Visualizes usage, finds large files, **rebuilds caches**, and refreshes system services
 - **Live monitoring**: Shows real-time CPU, GPU, memory, disk, and network stats
@@ -33,6 +33,8 @@
 ```bash
 brew install mole
 ```
+
+Homebrew follows Homebrew's supported macOS tiers. Use macOS 14 or later for the Homebrew path; older macOS versions should use the script installer below on a best-effort basis.
 
 **Or via script**
 
@@ -79,7 +81,10 @@ mo optimize --whitelist      # Manage protected optimization rules
 mo clean --whitelist         # Manage protected caches
 mo purge --paths             # Configure project scan directories
 mo analyze /Volumes          # Analyze external drives only
+mo analyze /private/tmp      # Review user-owned temporary directories
 ```
+
+Selections made with `mo clean --whitelist` persist in `~/.config/mole/whitelist`.
 
 ## Security & Safety Design
 
@@ -140,8 +145,6 @@ Uninstalling: Photoshop 2024
     - Logs, WebKit storage, Cookies
     - Extensions, Plugins, Launch daemons
 
-Note: On macOS 15 and later, Local Network permission entries can outlive app removal. Mole warns when an uninstalled app declares Local Network usage, but it does not auto-reset `/Volumes/Data/Library/Preferences/com.apple.networkextension*.plist` because that reset is global and requires Recovery mode.
-
 ====================================================================
 Space freed: 12.8GB
 ====================================================================
@@ -154,36 +157,41 @@ $ mo optimize
 
 System: 5/32 GB RAM | 333/460 GB Disk (72%) | Uptime 6d
 
-  ✓ Rebuild system databases and clear caches
-  ✓ Reset network services
-  ✓ Refresh Finder and Dock
-  ✓ Clean diagnostic and crash logs
-  ✓ Remove swap files and restart dynamic pager
-  ✓ Rebuild launch services and spotlight index
+  ✓ Inspect and repair supported system maintenance items
+  ✓ Refresh eligible Finder, network, and database state
+  ✓ Skip tasks that are unnecessary, unsafe now, or unavailable
 
 ====================================================================
-System optimization completed
+Optimization Complete
 ====================================================================
+Applied 8 optimizations
+9 unchanged | 4 skipped | 2 unavailable
+Optimization pass complete
+```
 
 Use `mo optimize --whitelist` to exclude specific optimizations. Path patterns work too, so you can keep a long-lived mounted disk image around (for example `/Volumes/mail`) without it showing up as a detach candidate.
-```
+
+Optimize results depend on the Mac's current state and available system tools, so the counts above are illustrative rather than fixed.
 
 ### Disk Space Analyzer
 
 > Note: By default, Mole skips external drives under `/Volumes` for faster startup. To inspect them, run `mo analyze /Volumes` or a specific mount path.
 
+Developer tools may leave large temporary directories under `/private/tmp`. Review user-owned entries with `mo analyze /private/tmp`; selected entries move to Trash only after confirmation. Mole does not automatically delete third-party temporary directories because build markers and age alone cannot prove that a checkout or worktree is disposable.
+
 ```bash
 $ mo analyze
 
-Analyze Disk  ~/Documents  |  Total: 156.8GB
+Analyze Disk  (302.1GB free)
+Select a location to explore:
 
- ▶  1. ███████████████████  48.2%  |  📁 Library                     75.4GB  >6mo
-    2. ██████████░░░░░░░░░  22.1%  |  📁 Downloads                   34.6GB
-    3. ████░░░░░░░░░░░░░░░  14.3%  |  📁 Movies                      22.4GB
-    4. ███░░░░░░░░░░░░░░░░  10.8%  |  📁 Documents                   16.9GB
-    5. ██░░░░░░░░░░░░░░░░░   5.2%  |  📄 backup_2023.zip              8.2GB
+ ▶  1. ████████████████████████  47.9%  |  Home                       75.4GB
+    2. ███████████               22.0%  |  User Library               34.6GB
+    3. ███████                   14.2%  |  Applications               22.4GB
+    4. █████                     10.7%  |  System Library             16.9GB
+    5. ███                        5.2%  |  Old Downloads (90d+)       8.2GB  >3mo
 
-  ↑↓←→ Navigate  |  O Open  |  F Show  |  ⌫ Delete  |  L Large files  |  Q Quit
+↑↓→ | Enter | R Refresh | O Open | P Preview | F File | Esc/Q Quit
 ```
 
 ### Live System Status
@@ -215,7 +223,7 @@ Proxy   HTTP · 192.168.1.100             Terminal   ▮▯▯▯▯  12.5%
 
 Health score is based on CPU, memory, disk, temperature, and I/O load, with color-coded ranges.
 
-Shortcuts: In `mo status`, press `k` to toggle the cat and save the preference, and `q` to quit.
+Shortcuts: In `mo status`, press `k` to toggle the cat, `c` to cycle how many CPU cores the card lists (2, 4, 8, all), and `q` to quit. Both preferences are saved.
 
 When enabled, `mo status` shows a read-only alert banner for processes that stay above the configured CPU threshold for a sustained window. Use `--proc-cpu-threshold`, `--proc-cpu-window`, or `--proc-cpu-alerts=false` to tune or disable it.
 
@@ -357,12 +365,16 @@ Real feedback from users who shared Mole on X.
 
 ## Support
 
-- If Mole helped you, [share it](https://twitter.com/intent/tweet?url=https://github.com/tw93/Mole&text=Mole%20-%20Deep%20clean%20and%20optimize%20your%20Mac.) with friends or give it a star.
-- Got ideas or bugs? Open an issue or PR, feel free to contribute your best AI model.
+- Getting [Mole for Mac](https://mole.fit) is the most direct way to support Mole's development.
+- If Mole helped you, give it a star, [share it](https://twitter.com/intent/tweet?url=https://github.com/tw93/Mole&text=Mole%20-%20Deep%20clean%20and%20optimize%20your%20Mac.), or open an issue or PR.
 - I have two cats, TangYuan and Coke. If you think Mole delights your life, you can feed them <a href="https://cats.tw93.fun?name=Mole" target="_blank">canned food 🥩</a>.
 
+<details>
+<summary>These lovely people already did 🐱</summary>
+<br/>
 <a href="https://cats.tw93.fun?name=Mole"><img src="https://cdn.jsdelivr.net/gh/tw93/sponsors@main/assets/sponsors.svg" width="1000" loading="lazy" /></a>
+</details>
 
 ## License
 
-MIT License. Feel free to use Mole and contribute.
+Mole is open source under GPL-3.0, see [LICENSE](LICENSE). A version you modify and share stays open under the same license, and if you fork Mole into your own product, to avoid confusion please give it a different name and credit Mole as the source. [Mole for Mac](https://mole.fit) is a separate, proprietary app, and Mole is here for the long run.

@@ -11,6 +11,14 @@ readonly MOLE_APP_PROTECTION_LOADED=1
 
 _MOLE_CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ -z "${MOLE_BASE_LOADED:-}" ]] && source "$_MOLE_CORE_DIR/base.sh"
+if [[ -z "${MOLE_TIMEOUT_LOADED:-}" ]]; then
+    # shellcheck source=lib/core/timeout.sh
+    source "$_MOLE_CORE_DIR/timeout.sh"
+fi
+if [[ -z "${MOLE_TIMEOUTS_LOADED:-}" ]]; then
+    # shellcheck source=lib/core/timeouts.sh
+    source "$_MOLE_CORE_DIR/timeouts.sh"
+fi
 
 # Declare WHITELIST_PATTERNS if not already set (used by is_path_whitelisted)
 if ! declare -p WHITELIST_PATTERNS &> /dev/null; then
@@ -21,6 +29,23 @@ fi
 # stays focused on logic. See app_protection_data.sh for the lists.
 # shellcheck source=lib/core/app_protection_data.sh
 source "$_MOLE_CORE_DIR/app_protection_data.sh"
+
+# Return 0 when Xcode/build tooling is active, 1 after reliable no-match
+# results, and 2 when process ownership cannot be established.
+xcode_build_tooling_process_state() {
+    command -v pgrep > /dev/null 2>&1 || return 2
+
+    local process probe_status
+    for process in Xcode xcodebuild xctest XCTRunner XCBBuildService swift-frontend; do
+        if pgrep -x "$process" > /dev/null 2>&1; then
+            return 0
+        else
+            probe_status=$?
+            [[ $probe_status -eq 1 ]] || return 2
+        fi
+    done
+    return 1
+}
 
 # Centralized check for critical system components (case-insensitive)
 is_critical_system_component() {
@@ -216,6 +241,88 @@ should_protect_data() {
     return 1
 }
 
+# Endpoint security / EDR / MDM agents (CrowdStrike Falcon, SentinelOne, ESET,
+# Jamf, GlobalProtect, Cisco Secure Client) tamper-protect their on-disk state.
+# Deleting anything that belongs to them under the per-user Darwin folder -- a
+# rebuildable Metal/GPU shader cache (.../C/...), a code-signature clone
+# (.../X/<bundle-id>.code_sign_clone), or temp (.../T/...) -- trips sensor tamper
+# detection (e.g. CrowdStrike "MacFalconSensorTamper", MITRE T1562.001) that
+# corporate security reports as malware. Reclaim is only a few MB, so never touch
+# these. The vendor prefixes live in ENDPOINT_SECURITY_BUNDLE_PREFIXES
+# (app_protection_data.sh); matching a vendor id anywhere under var/folders is
+# protection-only, so a wide match is safe. Shared by should_protect_path() and
+# the cache/clone sweeps in lib/clean/system.sh and lib/clean/user.sh.
+is_endpoint_security_cache_path() {
+    local path="$1"
+    # Fast reject: only the per-user Darwin folders are in scope (the real
+    # /private/var/folders and its /var/folders symlink form). Anchored to the
+    # absolute root so an unrelated ".../var/folders/..." path cannot match.
+    case "$path" in
+        /private/var/folders/* | /var/folders/*) ;;
+        *)
+            if ! declare -f _mole_path_is_within_existing_root > /dev/null 2>&1 ||
+                ! _mole_path_is_within_existing_root "$path" "/private/var/folders"; then
+                return 1
+            fi
+            ;;
+    esac
+    local restore_nocasematch=false
+    if ! shopt -q nocasematch; then
+        shopt -s nocasematch
+        restore_nocasematch=true
+    fi
+    local prefix
+    for prefix in "${ENDPOINT_SECURITY_BUNDLE_PREFIXES[@]}"; do
+        if [[ "$path" == *"$prefix"* ]]; then
+            [[ "$restore_nocasematch" == "true" ]] && shopt -u nocasematch
+            return 0
+        fi
+    done
+    [[ "$restore_nocasematch" == "true" ]] && shopt -u nocasematch
+    return 1
+}
+
+is_orbstack_runtime_path() {
+    local path="$1"
+    local restore_nocasematch=false
+    if ! shopt -q nocasematch; then
+        shopt -s nocasematch
+        restore_nocasematch=true
+    fi
+
+    local matched=false
+    case "$path" in
+        */Library/Group\ Containers/*dev.orbstack | */Library/Group\ Containers/*dev.orbstack/* | */.orbstack | */.orbstack/*)
+            matched=true
+            ;;
+    esac
+
+    [[ "$restore_nocasematch" == "true" ]] && shopt -u nocasematch
+    [[ "$matched" == "true" ]]
+}
+
+# E5RT (Apple's Espresso runtime, behind Vision/TextRecognition) keeps compiled
+# model bundles in a com.apple.e5rt.e5bundlecache directory, usually one level
+# below the owning app's or daemon's cache directory. A process that already
+# resolved that cache does not rebuild it: deleting it under a running app makes
+# every later recognition call fail with E5RT Code 13 until the app restarts.
+# Reclaims little, breaks visibly, so treat the directory and its immediate
+# parent as off limits. Shared by safe_clean() and process_container_cache().
+#
+# Args: $1 - path to check
+# Returns: 0 if the path is or directly holds a compiled model cache
+holds_compiled_model_cache() {
+    local path="$1"
+    [[ -z "$path" ]] && return 1
+    if [[ "${path%/}" == *"/com.apple.e5rt.e5bundlecache" ]]; then
+        return 0
+    fi
+    if [[ -d "$path/com.apple.e5rt.e5bundlecache" ]]; then
+        return 0
+    fi
+    return 1
+}
+
 # Check if a path is protected from deletion
 # Centralized logic to protect system settings, control center, and critical apps
 #
@@ -229,6 +336,25 @@ should_protect_path() {
     [[ -z "$path" ]] && return 1
 
     local _container_cache_path=false
+    local _known_rebuildable_cache_path=false
+
+    # Codex Desktop keeps durable state under Application Support, but these
+    # exact Chromium cache leaves under Library/Caches are rebuildable. Only
+    # their children are eligible; the profile and leaf directories stay.
+    case "$path" in
+        "$HOME/Library/Caches/Codex/Default/Cache/"* | \
+            "$HOME/Library/Caches/Codex/Default/Code Cache/"* | \
+            "$HOME/Library/Caches/Codex/Default/Partitions/codex-browser-app/Cache/"* | \
+            "$HOME/Library/Caches/Codex/Default/Partitions/codex-browser-app/Code Cache/"* | \
+            "$HOME/Library/Caches/Codex/codex-browser-app/Cache/"* | \
+            "$HOME/Library/Caches/Codex/codex-browser-app/Code Cache/"*)
+            _known_rebuildable_cache_path=true
+            ;;
+    esac
+
+    if is_orbstack_runtime_path "$path"; then
+        return 0
+    fi
 
     # 1. Keyword-based matching for system components (case-insensitive via character classes)
     case "$path" in
@@ -292,6 +418,13 @@ should_protect_path() {
             return 0
             ;;
     esac
+
+    # 4b. Endpoint security / EDR agent caches (CrowdStrike Falcon, SentinelOne,
+    # etc.). Dedicated predicate so the same vendor list is reused by the
+    # GPU-cache sweep in lib/clean/system.sh and matches deterministically.
+    if is_endpoint_security_cache_path "$path"; then
+        return 0
+    fi
 
     # 5. Protect critical preference files and user data
     case "$path" in
@@ -372,6 +505,13 @@ should_protect_path() {
             */Library/Caches/com.apple.siriactionsd.ShortcutsSandboxCache | */Library/Caches/com.apple.siriactionsd.ShortcutsSandboxCache/*)
             return 0
             ;;
+        # Wallpaper and aerial screen saver assets are user-selected content.
+        # Their download-time mtime does not indicate whether they are active,
+        # and deleting them forces a large re-download and selection reset.
+        */Library/Application\ Support/com.apple.idleassetsd | */Library/Application\ Support/com.apple.idleassetsd/* | \
+            */Library/Application\ Support/com.apple.wallpaper | */Library/Application\ Support/com.apple.wallpaper/*)
+            return 0
+            ;;
         # CoreAudio and audio subsystem caches (issue #553)
         # Cleaning these can cause audio output loss on Intel Macs
         *com.apple.coreaudio* | *com.apple.audio.* | *coreaudiod*)
@@ -383,7 +523,7 @@ should_protect_path() {
     # This catches things like /Users/tw93/Library/Caches/Claude when pattern is *Claude*
     # Skip for container cache/tmp paths: bundle ID was already checked in step 3,
     # and critical containers are caught by steps 1/4/5.
-    if [[ "$_container_cache_path" != "true" ]]; then
+    if [[ "$_container_cache_path" != "true" && "$_known_rebuildable_cache_path" != "true" ]]; then
         if [[ "${MOLE_UNINSTALL_MODE:-0}" == "1" ]]; then
             # Uninstall mode: first check if it's an uninstallable Apple app
             for pattern in "${APPLE_UNINSTALLABLE_APPS[@]}"; do
@@ -532,10 +672,42 @@ _mole_uninstall_name_variant_matches() {
     return 1
 }
 
+# Materialize a completed, bounded find before any uninstall plan consumes it.
+# Process substitution hides the producer status and can expose a partial
+# prefix after timeout. A failed ordinary find therefore contributes no
+# candidates for that root, while timeout/signal cancellation still aborts the
+# whole plan. This keeps an unreadable best-effort leftovers root from blocking
+# removal of the exact app the user selected without ever consuming partial
+# discovery output.
+_mole_uninstall_materialize_find0() {
+    local output_file="$1"
+    shift
+
+    : > "$output_file" || return 1
+    local scan_timeout="$MOLE_TIMEOUT_MEDIUM_PROBE_SEC"
+    if [[ -n "${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-}" ]]; then
+        scan_timeout=$(_mole_timeout_with_deadline "$scan_timeout" \
+            "$_MOLE_UNINSTALL_DISCOVERY_DEADLINE") || return $?
+    fi
+    local scan_rc=0
+    run_with_timeout "$scan_timeout" find \
+        "$@" < /dev/null > "$output_file" 2> /dev/null || scan_rc=$?
+    if [[ $scan_rc -ne 0 ]]; then
+        : > "$output_file" || true
+        if [[ $scan_rc -eq 124 || $scan_rc -ge 128 ]]; then
+            return "$scan_rc"
+        fi
+        debug_log "Skipping incomplete uninstall discovery root: ${1:-unknown}"
+        return 0
+    fi
+    return 0
+}
+
 find_vendor_nested_app_paths() {
     local bundle_id="$1"
     local app_name="$2"
     shift 2
+    local _MOLE_UNINSTALL_DISCOVERY_DEADLINE="${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-$((SECONDS + MOLE_TIMEOUT_DISK_VERIFY_SEC))}"
 
     [[ -n "$app_name" && ${#app_name} -ge 4 ]] || return 0
     _mole_uninstall_is_common_app_name "$app_name" && return 0
@@ -553,9 +725,19 @@ find_vendor_nested_app_paths() {
     hyphen_lower=$(_mole_uninstall_lower "${app_name// /-}")
     underscore_lower=$(_mole_uninstall_lower "${app_name// /_}")
 
+    local scan_file=""
+    scan_file=$(create_temp_file) || return 1
+    local -a matched_paths=()
     local root candidate parent_dir parent_base parent_lower child_base child_lower
     for root in "$@"; do
         [[ -d "$root" ]] || continue
+        local scan_rc=0
+        _mole_uninstall_materialize_find0 "$scan_file" "$root" \
+            -mindepth 2 -maxdepth 2 -type d -print0 || scan_rc=$?
+        if [[ $scan_rc -ne 0 ]]; then
+            rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$scan_rc"
+        fi
         while IFS= read -r -d '' candidate; do
             parent_dir="${candidate%/*}"
             parent_base="${parent_dir##*/}"
@@ -566,16 +748,21 @@ find_vendor_nested_app_paths() {
             child_lower=$(_mole_uninstall_lower "$child_base")
             if _mole_uninstall_name_variant_matches "$child_lower" \
                 "$app_lower" "$nospace_lower" "$hyphen_lower" "$underscore_lower" "$product_lower"; then
-                printf '%s\n' "$candidate"
+                matched_paths+=("$candidate")
             fi
-        done < <(command find "$root" -mindepth 2 -maxdepth 2 -type d -print0 2> /dev/null)
-    done | sort -u
+        done < "$scan_file"
+    done
+    rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+    if [[ ${#matched_paths[@]} -gt 0 ]]; then
+        printf '%s\n' "${matched_paths[@]}" | sort -u
+    fi
 }
 
 find_shared_app_paths() {
     local bundle_id="$1"
     local app_name="$2"
     shift 2
+    local _MOLE_UNINSTALL_DISCOVERY_DEADLINE="${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-$((SECONDS + MOLE_TIMEOUT_DISK_VERIFY_SEC))}"
 
     [[ -n "$app_name" && ${#app_name} -ge 5 ]] || return 0
     _mole_uninstall_is_common_app_name "$app_name" && return 0
@@ -593,18 +780,32 @@ find_shared_app_paths() {
     underscore_lower=$(_mole_uninstall_lower "${app_name// /_}")
     product_lower=$(_mole_uninstall_lower "$product_token")
 
+    local scan_file=""
+    scan_file=$(create_temp_file) || return 1
+    local -a matched_paths=()
     local root candidate base lower_base
     for root in "$@"; do
         [[ -d "$root" ]] || continue
+        local scan_rc=0
+        _mole_uninstall_materialize_find0 "$scan_file" "$root" \
+            -mindepth 1 -maxdepth 1 -print0 || scan_rc=$?
+        if [[ $scan_rc -ne 0 ]]; then
+            rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$scan_rc"
+        fi
         while IFS= read -r -d '' candidate; do
             base="${candidate##*/}"
             lower_base=$(_mole_uninstall_lower "$base")
             if _mole_uninstall_name_variant_matches "$lower_base" \
                 "$app_lower" "$nospace_lower" "$hyphen_lower" "$underscore_lower" "$product_lower"; then
-                printf '%s\n' "$candidate"
+                matched_paths+=("$candidate")
             fi
-        done < <(command find "$root" -mindepth 1 -maxdepth 1 -print0 2> /dev/null)
-    done | sort -u
+        done < "$scan_file"
+    done
+    rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+    if [[ ${#matched_paths[@]} -gt 0 ]]; then
+        printf '%s\n' "${matched_paths[@]}" | sort -u
+    fi
 }
 
 # Return 0 when `path` looks like a dotdir / XDG state directory belonging to
@@ -648,10 +849,71 @@ _path_belongs_to_independent_cli() {
     return 1
 }
 
+_mole_uninstall_embedded_bundle_ids() {
+    local app_path="${1:-}"
+    local primary_bundle_id="${2:-}"
+    local max_info_plists=128
+    local scanned=0
+    local _MOLE_UNINSTALL_DISCOVERY_DEADLINE="${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-$((SECONDS + MOLE_TIMEOUT_DISK_VERIFY_SEC))}"
+
+    [[ -n "$app_path" && -d "$app_path/Contents" ]] || return 0
+    [[ "$app_path" == /* && "$app_path" != *$'\n'* && "$app_path" != *"/.."* ]] || return 0
+
+    local scan_file=""
+    scan_file=$(create_temp_file) || return 1
+    local scan_rc=0
+    _mole_uninstall_materialize_find0 "$scan_file" "$app_path/Contents" \
+        -maxdepth 12 -type f -path "*/Contents/Info.plist" -print0 || scan_rc=$?
+    if [[ $scan_rc -ne 0 ]]; then
+        rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+        return "$scan_rc"
+    fi
+
+    local -a embedded_ids=()
+    local info bundle_root bundle_name ext embedded_id
+    while IFS= read -r -d '' info; do
+        scanned=$((scanned + 1))
+        [[ $scanned -le $max_info_plists ]] || break
+
+        bundle_root="${info%/Contents/Info.plist}"
+        [[ "$bundle_root" != "$app_path" ]] || continue
+        bundle_name="${bundle_root##*/}"
+        ext=$(printf '%s' "${bundle_name##*.}" | tr '[:upper:]' '[:lower:]')
+
+        case "$ext" in
+            xpc | appex) ;;
+            app)
+                case "$bundle_root" in
+                    "$app_path/Contents/Library/LoginItems/"*) ;;
+                    *) continue ;;
+                esac
+                ;;
+            *) continue ;;
+        esac
+
+        embedded_id=$(plutil -extract CFBundleIdentifier raw "$info" 2> /dev/null || true)
+        mole_is_reverse_dns_bundle_id "$embedded_id" || continue
+        [[ "$embedded_id" == "$primary_bundle_id" ]] && continue
+        # Shared framework services are not owned by every app that embeds them.
+        case "$embedded_id" in
+            org.sparkle-project.*)
+                continue
+                ;;
+        esac
+        embedded_ids+=("$embedded_id")
+    done < "$scan_file"
+    rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+    if [[ ${#embedded_ids[@]} -gt 0 ]]; then
+        printf '%s\n' "${embedded_ids[@]}" | sort -u
+    fi
+}
+
 # Locate files associated with an application
 find_app_files() {
     local bundle_id="$1"
     local app_name="$2"
+    local app_path="${3:-}"
+    local _MOLE_UNINSTALL_DISCOVERY_DEADLINE="${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-$((SECONDS + MOLE_TIMEOUT_DISK_VERIFY_SEC))}"
 
     # Early validation: require at least one valid identifier
     # Skip scanning if both bundle_id and app_name are invalid
@@ -661,6 +923,9 @@ find_app_files() {
     fi
 
     local -a files_to_clean=()
+    local discovery_scan_file=""
+    discovery_scan_file=$(create_temp_file) || return 1
+    local discovery_scan_rc=0
 
     # Normalize app name for matching - generate all common naming variants
     # Apps use inconsistent naming: "Maestro Studio" vs "maestro-studio" vs "MaestroStudio"
@@ -691,35 +956,45 @@ find_app_files() {
         bundle_id_valid="true"
     fi
 
-    # Standard path patterns for user-level files
-    local -a user_patterns=(
-        "$HOME/Library/Application Support/$app_name"
-        "$HOME/Library/Caches/$app_name"
-        "$HOME/Library/Logs/$app_name"
+    # Standard path patterns for user-level files. App-name templates must never
+    # be built from an empty display name, otherwise dotdir/XDG paths collapse to
+    # broad roots like "$HOME/." or "$HOME/.config/".
+    local -a user_patterns=()
+    if [[ -n "$app_name" && ${#app_name} -ge 2 ]]; then
+        user_patterns+=(
+            "$HOME/Library/Application Support/$app_name"
+            "$HOME/Library/Caches/$app_name"
+            "$HOME/Library/Logs/$app_name"
+            "$HOME/Library/Preferences/$app_name"
+            "$HOME/Library/Preferences/$app_name.plist"
+            "$HOME/Library/Saved Application State/$app_name.savedState"
 
-        "$HOME/Library/Services/$app_name.workflow"
-        "$HOME/Library/QuickLook/$app_name.qlgenerator"
-        "$HOME/Library/Internet Plug-Ins/$app_name.plugin"
-        "$HOME/Library/Audio/Plug-Ins/Components/$app_name.component"
-        "$HOME/Library/Audio/Plug-Ins/VST/$app_name.vst"
-        "$HOME/Library/Audio/Plug-Ins/VST3/$app_name.vst3"
-        "$HOME/Library/Audio/Plug-Ins/Digidesign/$app_name.dpm"
-        "$HOME/Library/PreferencePanes/$app_name.prefPane"
-        "$HOME/Library/Input Methods/$app_name.app"
-        "$HOME/Library/Screen Savers/$app_name.saver"
-        "$HOME/Library/Frameworks/$app_name.framework"
-        "$HOME/Library/Contextual Menu Items/$app_name.plugin"
-        "$HOME/Library/Spotlight/$app_name.mdimporter"
-        "$HOME/Library/ColorPickers/$app_name.colorPicker"
-        "$HOME/Library/Workflows/$app_name.workflow"
-        "$HOME/.config/$app_name"
-        "$HOME/.local/share/$app_name"
-        "$HOME/.$app_name"
-        "$HOME/.$app_name"rc
-        "$HOME/Library/Address Book Plug-Ins/$app_name.bundle"
-        "$HOME/Library/Accessibility/$app_name.bundle"
-        "$HOME/Library/Mail/Bundles/$app_name.mailbundle"
-    )
+            "$HOME/Library/Services/$app_name.workflow"
+            "$HOME/Library/QuickLook/$app_name.qlgenerator"
+            "$HOME/Library/Internet Plug-Ins/$app_name.plugin"
+            "$HOME/Library/Audio/Plug-Ins/Components/$app_name.component"
+            "$HOME/Library/Audio/Plug-Ins/VST/$app_name.vst"
+            "$HOME/Library/Audio/Plug-Ins/VST3/$app_name.vst3"
+            "$HOME/Library/Audio/Plug-Ins/Digidesign/$app_name.dpm"
+            "$HOME/Library/PreferencePanes/$app_name.prefPane"
+            "$HOME/Library/Input Methods/$app_name.app"
+            "$HOME/Library/Screen Savers/$app_name.saver"
+            "$HOME/Library/Frameworks/$app_name.framework"
+            "$HOME/Library/Contextual Menu Items/$app_name.plugin"
+            "$HOME/Library/Spotlight/$app_name.mdimporter"
+            "$HOME/Library/ColorPickers/$app_name.colorPicker"
+            "$HOME/Library/Workflows/$app_name.workflow"
+            "$HOME/.config/$app_name"
+            "$HOME/.cache/$app_name"
+            "$HOME/.cache/$lowercase_name"
+            "$HOME/.local/share/$app_name"
+            "$HOME/.$app_name"
+            "$HOME/.$app_name"rc
+            "$HOME/Library/Address Book Plug-Ins/$app_name.bundle"
+            "$HOME/Library/Accessibility/$app_name.bundle"
+            "$HOME/Library/Mail/Bundles/$app_name.mailbundle"
+        )
+    fi
 
     if [[ "$bundle_id_valid" == "true" ]]; then
         user_patterns+=(
@@ -740,6 +1015,48 @@ find_app_files() {
         )
     fi
 
+    # A bundle id's last segment often names the data directory more precisely
+    # than the display name: tdesktop forks ship as "AyuGram" with bundle
+    # one.ayugram.AyuGramDesktop and write to "Application Support/AyuGram
+    # Desktop", which no display-name variant reaches. The leaf alone is NOT
+    # enough evidence: a wrapper carrying com.wrapper.GoogleChrome or a fork
+    # named 64Gram carrying org.fork.TelegramDesktop would synthesize another
+    # product's live data directory. So the derivation requires the leaf to
+    # EXTEND the display name itself: a valid reverse-DNS id, a leaf of eight
+    # or more characters with a camel transition, starting with the no-space
+    # display name (case-insensitive, APFS is too) and continuing at an
+    # uppercase-or-digit word boundary. Only two literal-path variants come
+    # out: the raw leaf and the split that keeps the display name intact.
+    if [[ "$bundle_id_valid" == "true" && ${#app_name} -ge 3 ]]; then
+        local bundle_leaf="${bundle_id##*.}"
+        local app_name_nospace="${app_name// /}"
+        local bundle_leaf_lower app_name_nospace_lower
+        bundle_leaf_lower=$(printf '%s' "$bundle_leaf" | tr '[:upper:]' '[:lower:]')
+        app_name_nospace_lower=$(printf '%s' "$app_name_nospace" | tr '[:upper:]' '[:lower:]')
+        if [[ ${#bundle_leaf} -ge 8 && ${#app_name_nospace} -ge 3 &&
+            "$bundle_leaf" != "$app_name" &&
+            "$bundle_leaf" =~ [a-z][A-Z] &&
+            "$bundle_leaf_lower" == "$app_name_nospace_lower"?* ]]; then
+            local bundle_leaf_rest="${bundle_leaf:${#app_name_nospace}}"
+            if [[ "$bundle_leaf_rest" =~ ^[A-Z0-9] ]]; then
+                local bundle_leaf_rest_spaced
+                bundle_leaf_rest_spaced=$(printf '%s' "$bundle_leaf_rest" |
+                    sed -E 's/([A-Z]+)([A-Z][a-z])/\1 \2/g; s/([a-z0-9])([A-Z])/\1 \2/g')
+                local bundle_leaf_variant
+                for bundle_leaf_variant in "$bundle_leaf" "$app_name $bundle_leaf_rest_spaced"; do
+                    [[ "$bundle_leaf_variant" != "$app_name" ]] || continue
+                    user_patterns+=(
+                        "$HOME/Library/Application Support/$bundle_leaf_variant"
+                        "$HOME/Library/Caches/$bundle_leaf_variant"
+                        "$HOME/Library/Logs/$bundle_leaf_variant"
+                        "$HOME/Library/Preferences/$bundle_leaf_variant.plist"
+                        "$HOME/Library/Saved Application State/$bundle_leaf_variant.savedState"
+                    )
+                done
+            fi
+        fi
+    fi
+
     # Add all naming variants to cover inconsistent app directory naming
     # Issue #377: Apps create directories with various naming conventions
     if [[ ${#app_name} -gt 3 && "$app_name" =~ [[:space:]] ]]; then
@@ -748,12 +1065,22 @@ find_app_files() {
             "$HOME/Library/Application Support/$nospace_name"
             "$HOME/Library/Caches/$nospace_name"
             "$HOME/Library/Logs/$nospace_name"
+            "$HOME/Library/Preferences/$nospace_name"
+            "$HOME/Library/Preferences/$nospace_name.plist"
+            "$HOME/Library/Saved Application State/$nospace_name.savedState"
             "$HOME/Library/Application Support/$underscore_name"
             "$HOME/Library/Application Support/$hyphen_name"
+            "$HOME/Library/Preferences/$underscore_name"
+            "$HOME/Library/Preferences/$underscore_name.plist"
+            "$HOME/Library/Preferences/$hyphen_name"
+            "$HOME/Library/Preferences/$hyphen_name.plist"
             # Lowercase variants (maestrostudio, maestro-studio, maestro_studio)
             "$HOME/.config/$lowercase_nospace"
             "$HOME/.config/$lowercase_hyphen"
             "$HOME/.config/$lowercase_underscore"
+            "$HOME/.cache/$lowercase_nospace"
+            "$HOME/.cache/$lowercase_hyphen"
+            "$HOME/.cache/$lowercase_underscore"
             "$HOME/.local/share/$lowercase_nospace"
             "$HOME/.local/share/$lowercase_hyphen"
             "$HOME/.local/share/$lowercase_underscore"
@@ -766,7 +1093,11 @@ find_app_files() {
             "$HOME/Library/Application Support/$base_name"
             "$HOME/Library/Caches/$base_name"
             "$HOME/Library/Logs/$base_name"
+            "$HOME/Library/Preferences/$base_name"
+            "$HOME/Library/Preferences/$base_name.plist"
+            "$HOME/Library/Saved Application State/$base_name.savedState"
             "$HOME/.config/$base_lowercase"
+            "$HOME/.cache/$base_lowercase"
             "$HOME/.local/share/$base_lowercase"
             "$HOME/.$base_lowercase"
         )
@@ -775,13 +1106,23 @@ find_app_files() {
     # Issue #422: Zed channel builds can leave data under another channel bundle id.
     # Example: uninstalling dev.zed.Zed-Nightly should also detect dev.zed.Zed-Preview leftovers.
     if [[ "$bundle_id_valid" == "true" && "$bundle_id" =~ ^dev\.zed\.Zed- ]] && [[ -d "$HOME/Library/HTTPStorages" ]]; then
+        discovery_scan_rc=0
+        _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+            "$HOME/Library/HTTPStorages" -maxdepth 1 \
+            -name "dev.zed.Zed-*" -print0 || discovery_scan_rc=$?
+        if [[ $discovery_scan_rc -ne 0 ]]; then
+            rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$discovery_scan_rc"
+        fi
         while IFS= read -r -d '' zed_http_storage; do
             files_to_clean+=("$zed_http_storage")
-        done < <(command find "$HOME/Library/HTTPStorages" -maxdepth 1 -name "dev.zed.Zed-*" -print0 2> /dev/null)
+        done < "$discovery_scan_file"
     fi
 
-    # Process standard patterns
-    for p in "${user_patterns[@]}"; do
+    # Process standard patterns. user_patterns can be empty when app_name is
+    # too short and bundle_id is invalid; bash 3.2 under set -u treats an empty
+    # "${arr[@]}" expansion as an unbound variable, so use the +-guard idiom.
+    for p in "${user_patterns[@]+"${user_patterns[@]}"}"; do
         local expanded_path="${p/#\~/$HOME}"
         # Skip if path doesn't exist
         [[ ! -e "$expanded_path" ]] && continue
@@ -792,12 +1133,18 @@ find_app_files() {
             */Library/Application\ Support | */Library/Application\ Support/ | \
                 */Library/Caches | */Library/Caches/ | \
                 */Library/Logs | */Library/Logs/ | \
+                */Library/Preferences | */Library/Preferences/ | \
+                */Library/Preferences/ByHost | */Library/Preferences/ByHost/ | \
                 */Library/Containers | */Library/Containers/ | \
                 */Library/WebKit | */Library/WebKit/ | \
                 */Library/HTTPStorages | */Library/HTTPStorages/ | \
                 */Library/Application\ Scripts | */Library/Application\ Scripts/ | \
                 */Library/Autosave\ Information | */Library/Autosave\ Information/ | \
-                */Library/Group\ Containers | */Library/Group\ Containers/)
+                */Library/Group\ Containers | */Library/Group\ Containers/ | \
+                */.config | */.config/ | \
+                */.cache | */.cache/ | \
+                */.local/share | */.local/share/ | \
+                "$HOME" | "$HOME"/ | "$HOME"/.)
                 continue
                 ;;
         esac
@@ -818,15 +1165,19 @@ find_app_files() {
     # than directly under Application Support. Match only when the vendor token
     # comes from the bundle id to avoid broad name-only deletion.
     if [[ "$bundle_id_valid" == "true" ]]; then
-        local vendor_nested_path
+        local vendor_nested_path vendor_nested_output=""
+        discovery_scan_rc=0
+        vendor_nested_output=$(find_vendor_nested_app_paths "$bundle_id" "$app_name" \
+            "$HOME/Library/Application Support" \
+            "$HOME/Library/Caches" \
+            "$HOME/Library/Logs") || discovery_scan_rc=$?
+        if [[ $discovery_scan_rc -ne 0 ]]; then
+            rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$discovery_scan_rc"
+        fi
         while IFS= read -r vendor_nested_path; do
             [[ -n "$vendor_nested_path" && -e "$vendor_nested_path" ]] && files_to_clean+=("$vendor_nested_path")
-        done < <(
-            find_vendor_nested_app_paths "$bundle_id" "$app_name" \
-                "$HOME/Library/Application Support" \
-                "$HOME/Library/Caches" \
-                "$HOME/Library/Logs"
-        )
+        done <<< "$vendor_nested_output"
     fi
 
     # Handle Preferences and ByHost variants (only if bundle_id is valid).
@@ -836,16 +1187,37 @@ find_app_files() {
     if [[ "$bundle_id_valid" == "true" ]]; then
         [[ -f ~/Library/Preferences/"$bundle_id".plist ]] && files_to_clean+=("$HOME/Library/Preferences/$bundle_id.plist")
         [[ -d ~/Library/Preferences/"$bundle_id" ]] && files_to_clean+=("$HOME/Library/Preferences/$bundle_id")
-        [[ -d ~/Library/Preferences/ByHost ]] && while IFS= read -r -d '' pref; do
-            if mole_name_starts_with_bundle_id_boundary "$pref" "$bundle_id"; then
-                files_to_clean+=("$pref")
+        if [[ -d ~/Library/Preferences/ByHost ]]; then
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$HOME/Library/Preferences/ByHost" -maxdepth 1 -type f \
+                -name "*.plist" -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
             fi
-        done < <(command find ~/Library/Preferences/ByHost -maxdepth 1 -type f -name "*.plist" -print0 2> /dev/null)
+            while IFS= read -r -d '' pref; do
+                if mole_name_starts_with_bundle_id_boundary "$pref" "$bundle_id"; then
+                    files_to_clean+=("$pref")
+                fi
+            done < "$discovery_scan_file"
+        fi
 
         # User LaunchAgents: wildcard scan for helper plists (e.g., com.example.app.helper.plist)
-        [[ -d ~/Library/LaunchAgents ]] && while IFS= read -r -d '' plist; do
-            files_to_clean+=("$plist")
-        done < <(command find ~/Library/LaunchAgents -maxdepth 1 \( -name "${bundle_id}.plist" -o -name "${bundle_id}.*.plist" \) -print0 2> /dev/null)
+        if [[ -d ~/Library/LaunchAgents ]]; then
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$HOME/Library/LaunchAgents" -maxdepth 1 \
+                \( -name "${bundle_id}.plist" -o -name "${bundle_id}.*.plist" \) \
+                -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
+            while IFS= read -r -d '' plist; do
+                files_to_clean+=("$plist")
+            done < "$discovery_scan_file"
+        fi
 
         # NSURLSession download caches
         local nsurlsession_dl="$HOME/Library/Caches/com.apple.nsurlsessiond/Downloads/$bundle_id"
@@ -853,11 +1225,19 @@ find_app_files() {
 
         # Group Containers (special handling)
         if [[ -d ~/Library/Group\ Containers ]]; then
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$HOME/Library/Group Containers" -maxdepth 1 -type d \
+                -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
             while IFS= read -r -d '' container; do
                 if mole_name_has_bundle_id_boundary "$container" "$bundle_id"; then
                     files_to_clean+=("$container")
                 fi
-            done < <(command find ~/Library/Group\ Containers -maxdepth 1 -type d -print0 2> /dev/null)
+            done < "$discovery_scan_file"
         fi
 
         # App extensions often use bundle-id-derived directories rather than the
@@ -873,26 +1253,90 @@ find_app_files() {
         local already_added=false
         for derived_root in "${derived_bundle_roots[@]}"; do
             [[ -d "$derived_root" ]] || continue
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$derived_root" -maxdepth 1 -type d -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
             while IFS= read -r -d '' derived_path; do
                 mole_name_has_bundle_id_boundary "$derived_path" "$bundle_id" || continue
                 already_added=false
-                for existing_path in "${files_to_clean[@]}"; do
-                    if [[ "$existing_path" == "$derived_path" ]]; then
-                        already_added=true
-                        break
-                    fi
-                done
+                if [[ ${#files_to_clean[@]} -gt 0 ]]; then
+                    for existing_path in "${files_to_clean[@]}"; do
+                        if [[ "$existing_path" == "$derived_path" ]]; then
+                            already_added=true
+                            break
+                        fi
+                    done
+                fi
                 [[ "$already_added" == "true" ]] || files_to_clean+=("$derived_path")
-            done < <(command find "$derived_root" -maxdepth 1 -type d -print0 2> /dev/null)
+            done < "$discovery_scan_file"
         done
     fi
 
-    # Shared file lists (.sfl4 - recent documents etc.)
+    # Shared file lists (recent documents etc.). Keep the root exact: only
+    # per-app ApplicationRecentDocuments files named by bundle id are owned by
+    # the uninstall target.
     if [[ "$bundle_id_valid" == "true" ]] &&
-        [[ -d "$HOME/Library/Application Support/com.apple.sharedfilelist" ]]; then
-        while IFS= read -r -d '' sfl4_file; do
-            files_to_clean+=("$sfl4_file")
-        done < <(command find "$HOME/Library/Application Support/com.apple.sharedfilelist" -maxdepth 2 -name "${bundle_id}.sfl4" -print0 2> /dev/null)
+        [[ -d "$HOME/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments" ]]; then
+        discovery_scan_rc=0
+        _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+            "$HOME/Library/Application Support/com.apple.sharedfilelist/com.apple.LSSharedFileList.ApplicationRecentDocuments" \
+            -maxdepth 1 -type f \
+            \( -name "${bundle_id}.sfl2" -o -name "${bundle_id}.sfl3" -o -name "${bundle_id}.sfl4" \) \
+            -print0 || discovery_scan_rc=$?
+        if [[ $discovery_scan_rc -ne 0 ]]; then
+            rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$discovery_scan_rc"
+        fi
+        while IFS= read -r -d '' sfl_file; do
+            files_to_clean+=("$sfl_file")
+        done < "$discovery_scan_file"
+    fi
+
+    # Helper extensions and XPC services can persist their own bundle-id keyed
+    # user data. Read only bounded embedded bundle ids from the selected app,
+    # then map them to exact ~/Library paths. Keep this stricter than the Mac
+    # app's review-only scanner because CLI leftovers are deletable after the
+    # single uninstall confirmation.
+    if [[ "$bundle_id_valid" == "true" && -n "$app_path" ]]; then
+        local embedded_id embedded_candidate embedded_ids_output=""
+        discovery_scan_rc=0
+        embedded_ids_output=$(_mole_uninstall_embedded_bundle_ids \
+            "$app_path" "$bundle_id") || discovery_scan_rc=$?
+        if [[ $discovery_scan_rc -ne 0 ]]; then
+            rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$discovery_scan_rc"
+        fi
+        while IFS= read -r embedded_id; do
+            [[ -n "$embedded_id" ]] || continue
+            for embedded_candidate in \
+                "$HOME/Library/Application Scripts/$embedded_id" \
+                "$HOME/Library/Application Support/FileProvider/$embedded_id" \
+                "$HOME/Library/Caches/$embedded_id" \
+                "$HOME/Library/Containers/$embedded_id" \
+                "$HOME/Library/HTTPStorages/$embedded_id" \
+                "$HOME/Library/HTTPStorages/$embedded_id.binarycookies" \
+                "$HOME/Library/Preferences/$embedded_id.plist" \
+                "$HOME/Library/WebKit/$embedded_id"; do
+                [[ -e "$embedded_candidate" ]] && files_to_clean+=("$embedded_candidate")
+            done
+            if [[ -d "$HOME/Library/Preferences/ByHost" ]]; then
+                discovery_scan_rc=0
+                _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                    "$HOME/Library/Preferences/ByHost" -maxdepth 1 -type f \
+                    -name "${embedded_id}.*.plist" -print0 || discovery_scan_rc=$?
+                if [[ $discovery_scan_rc -ne 0 ]]; then
+                    rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                    return "$discovery_scan_rc"
+                fi
+                while IFS= read -r -d '' embedded_candidate; do
+                    files_to_clean+=("$embedded_candidate")
+                done < "$discovery_scan_file"
+            fi
+        done <<< "$embedded_ids_output"
     fi
 
     # Launch Agents by name (special handling)
@@ -907,6 +1351,14 @@ find_app_files() {
         if [[ "$app_name" =~ ^(${LAUNCH_AGENT_NAME_COMMON_WORDS})$ ]]; then
             debug_log "Skipping LaunchAgent name search for common word: $app_name"
         else
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$HOME/Library/LaunchAgents" -maxdepth 1 \
+                -name "*$app_name*.plist" -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
             while IFS= read -r -d '' plist; do
                 local plist_name=$(basename "$plist")
                 # Skip Apple's LaunchAgents
@@ -914,7 +1366,7 @@ find_app_files() {
                     continue
                 fi
                 files_to_clean+=("$plist")
-            done < <(command find ~/Library/LaunchAgents -maxdepth 1 -name "*$app_name*.plist" -print0 2> /dev/null)
+            done < "$discovery_scan_file"
         fi
     fi
 
@@ -923,8 +1375,21 @@ find_app_files() {
     # tokens, AVD images, SDK installs, or other manually-curated data. Only
     # regenerable cache/derived paths belong here. If a toolchain dir is mixed
     # (config + cache), skip the whole tree rather than guess.
+    #
+    # MOLE_UNINSTALL_SIBLING_SURVIVES=1 skips the whole heuristic section
+    # below (through Raycast). The batch uninstall sibling guard sets it when
+    # another install sharing this bundle id stays on disk (Xcode.app vs
+    # Xcode-beta.app): these blocks match by regex substring, so the demoted
+    # bundle id alone does not stop them, and every path they collect is a
+    # toolchain cache the surviving install still uses.
+    local collect_toolchain_leftovers=true
+    if [[ "${MOLE_UNINSTALL_SIBLING_SURVIVES:-0}" == "1" ]]; then
+        collect_toolchain_leftovers=false
+    fi
+
     # 1. DevEco-Studio (Huawei)
-    if [[ "$app_name" =~ DevEco|deveco ]] || [[ "$bundle_id" =~ huawei.*deveco ]]; then
+    if [[ "$collect_toolchain_leftovers" == "true" ]] &&
+        { [[ "$app_name" =~ DevEco|deveco ]] || [[ "$bundle_id" =~ huawei.*deveco ]]; }; then
         # Skipped: ~/DevEcoStudioProjects, ~/HarmonyOS, ~/Huawei (project
         # source); ~/DevEco-Studio (IDE config + license state); ~/Library/
         # Application Support/Huawei, ~/Library/Huawei, ~/.huawei, ~/.ohos
@@ -936,7 +1401,8 @@ find_app_files() {
     fi
 
     # 2. Android Studio (Google)
-    if [[ "$app_name" =~ Android.*Studio|android.*studio ]] || [[ "$bundle_id" =~ google.*android.*studio|jetbrains.*android ]]; then
+    if [[ "$collect_toolchain_leftovers" == "true" ]] &&
+        { [[ "$app_name" =~ Android.*Studio|android.*studio ]] || [[ "$bundle_id" =~ google.*android.*studio|jetbrains.*android ]]; }; then
         # Skipped: ~/AndroidStudioProjects (project source), ~/Library/Android
         # (SDK installs, multi-GB), ~/.android root (debug.keystore signing
         # key, adbkey device pairing, avd/ images). Only sweep regenerable
@@ -944,11 +1410,24 @@ find_app_files() {
         for d in ~/.android/cache ~/.android/build-cache ~/.android/breakpad; do
             [[ -d "$d" ]] && files_to_clean+=("$d")
         done
-        [[ -d ~/Library/Application\ Support/Google ]] && while IFS= read -r -d '' d; do files_to_clean+=("$d"); done < <(command find ~/Library/Application\ Support/Google -maxdepth 1 -name "AndroidStudio*" -print0 2> /dev/null)
+        if [[ -d ~/Library/Application\ Support/Google ]]; then
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$HOME/Library/Application Support/Google" -maxdepth 1 \
+                -name "AndroidStudio*" -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
+            while IFS= read -r -d '' d; do
+                files_to_clean+=("$d")
+            done < "$discovery_scan_file"
+        fi
     fi
 
     # 3. Xcode (Apple)
-    if [[ "$app_name" =~ Xcode|xcode ]] || [[ "$bundle_id" =~ apple.*xcode ]]; then
+    if [[ "$collect_toolchain_leftovers" == "true" ]] &&
+        { [[ "$app_name" =~ Xcode|xcode ]] || [[ "$bundle_id" =~ apple.*xcode ]]; }; then
         # Skipped: ~/Library/Developer root (Toolchains, Archives, UserData,
         # CoreSimulator/Devices, provisioning profiles). Only sweep
         # regenerable build/device caches.
@@ -966,16 +1445,29 @@ find_app_files() {
     fi
 
     # 4. JetBrains (IDE settings)
-    if [[ "$bundle_id" =~ jetbrains ]] || [[ "$app_name" =~ IntelliJ|PyCharm|WebStorm|GoLand|RubyMine|PhpStorm|CLion|DataGrip|Rider ]]; then
+    if [[ "$collect_toolchain_leftovers" == "true" ]] &&
+        { [[ "$bundle_id" =~ jetbrains ]] || [[ "$app_name" =~ IntelliJ|PyCharm|WebStorm|GoLand|RubyMine|PhpStorm|CLion|DataGrip|Rider ]]; }; then
         for base in ~/Library/Application\ Support/JetBrains ~/Library/Caches/JetBrains ~/Library/Logs/JetBrains; do
-            [[ -d "$base" ]] && while IFS= read -r -d '' d; do files_to_clean+=("$d"); done < <(command find "$base" -maxdepth 1 -name "${app_name}*" -print0 2> /dev/null)
+            [[ -d "$base" ]] || continue
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$base" -maxdepth 1 -name "${app_name}*" -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
+            while IFS= read -r -d '' d; do
+                files_to_clean+=("$d")
+            done < "$discovery_scan_file"
         done
     fi
 
     # 5. Unity / Unreal / Godot
-    [[ "$app_name" =~ Unity|unity ]] && [[ -d ~/Library/Unity ]] && files_to_clean+=("$HOME/Library/Unity")
-    [[ "$app_name" =~ Unreal|unreal ]] && [[ -d ~/Library/Application\ Support/Epic ]] && files_to_clean+=("$HOME/Library/Application Support/Epic")
-    [[ "$app_name" =~ Godot|godot ]] && [[ -d ~/Library/Application\ Support/Godot ]] && files_to_clean+=("$HOME/Library/Application Support/Godot")
+    if [[ "$collect_toolchain_leftovers" == "true" ]]; then
+        [[ "$app_name" =~ Unity|unity ]] && [[ -d ~/Library/Unity ]] && files_to_clean+=("$HOME/Library/Unity")
+        [[ "$app_name" =~ Unreal|unreal ]] && [[ -d ~/Library/Application\ Support/Epic ]] && files_to_clean+=("$HOME/Library/Application Support/Epic")
+        [[ "$app_name" =~ Godot|godot ]] && [[ -d ~/Library/Application\ Support/Godot ]] && files_to_clean+=("$HOME/Library/Application Support/Godot")
+    fi
 
     # 6. Tools
     # VS Code stores user data under folder names that don't match the app name
@@ -998,15 +1490,23 @@ find_app_files() {
     # Docker: ~/.docker holds config.json (Docker Hub auth tokens), contexts/
     # (kubeconfig-style endpoints, possibly with credentials), and cli-plugins.
     # Only sweep regenerable cache subtrees, never the whole tree.
-    if [[ "$app_name" =~ Docker ]]; then
+    if [[ "$collect_toolchain_leftovers" == "true" ]] && [[ "$app_name" =~ Docker ]]; then
         for d in ~/.docker/buildx ~/.docker/scan; do
             [[ -d "$d" ]] && files_to_clean+=("$d")
         done
     fi
 
     # 6.1 Maestro Studio
-    if [[ "$bundle_id" == "com.maestro.studio" ]] || [[ "$lowercase_name" =~ maestro[[:space:]]*studio ]]; then
+    if [[ "$collect_toolchain_leftovers" == "true" ]] &&
+        { [[ "$bundle_id" == "com.maestro.studio" ]] || [[ "$lowercase_name" =~ maestro[[:space:]]*studio ]]; }; then
         [[ -d ~/.mobiledev ]] && files_to_clean+=("$HOME/.mobiledev")
+    fi
+
+    # Anki's profile directory (Anki2) contains decks, media, and backups.
+    # Only collect the launcher-managed support files here.
+    if [[ "$collect_toolchain_leftovers" == "true" ]] &&
+        { [[ "$bundle_id" == "net.ankiweb.anki" ]] || [[ "$app_name" == "Anki" ]]; }; then
+        [[ -d "$HOME/Library/Application Support/AnkiProgramFiles" ]] && files_to_clean+=("$HOME/Library/Application Support/AnkiProgramFiles")
     fi
 
     # 7. Raycast
@@ -1017,10 +1517,21 @@ find_app_files() {
             "$HOME/Library/Application Scripts"
             "$HOME/Library/Containers"
         )
+        # Raycast v2 ships as a separate app (bundle id com.raycast-x.macos);
+        # exclude its directories from every v1 "*raycast*" sweep (#1202).
         for dir in "${raycast_dirs[@]}"; do
-            [[ -d "$dir" ]] && while IFS= read -r -d '' p; do
+            [[ -d "$dir" ]] || continue
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$dir" -maxdepth 1 -type d -iname "*raycast*" \
+                ! -iname "*raycast-x*" -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
+            while IFS= read -r -d '' p; do
                 files_to_clean+=("$p")
-            done < <(command find "$dir" -maxdepth 1 -type d -iname "*raycast*" -print0 2> /dev/null)
+            done < "$discovery_scan_file"
         done
 
         # Explicit Raycast container directories (hardcoded leftovers)
@@ -1028,31 +1539,77 @@ find_app_files() {
         [[ -d "$HOME/Library/Containers/com.raycast.macos.RaycastAppIntents" ]] && files_to_clean+=("$HOME/Library/Containers/com.raycast.macos.RaycastAppIntents")
 
         # Cache (deeper search)
-        [[ -d "$HOME/Library/Caches" ]] && while IFS= read -r -d '' p; do
-            files_to_clean+=("$p")
-        done < <(command find "$HOME/Library/Caches" -maxdepth 2 -type d -iname "*raycast*" -print0 2> /dev/null)
+        if [[ -d "$HOME/Library/Caches" ]]; then
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$HOME/Library/Caches" -maxdepth 2 -type d -iname "*raycast*" \
+                ! -iname "*raycast-x*" -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
+            while IFS= read -r -d '' p; do
+                files_to_clean+=("$p")
+            done < "$discovery_scan_file"
+        fi
 
         # VSCode extension storage
         local vscode_global="$HOME/Library/Application Support/Code/User/globalStorage"
-        [[ -d "$vscode_global" ]] && while IFS= read -r -d '' p; do
-            files_to_clean+=("$p")
-        done < <(command find "$vscode_global" -maxdepth 1 -type d -iname "*raycast*" -print0 2> /dev/null)
+        if [[ -d "$vscode_global" ]]; then
+            discovery_scan_rc=0
+            _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+                "$vscode_global" -maxdepth 1 -type d -iname "*raycast*" \
+                ! -iname "*raycast-x*" -print0 || discovery_scan_rc=$?
+            if [[ $discovery_scan_rc -ne 0 ]]; then
+                rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$discovery_scan_rc"
+            fi
+            while IFS= read -r -d '' p; do
+                files_to_clean+=("$p")
+            done < "$discovery_scan_file"
+        fi
     fi
 
     # CrashReporter plists: named AppName_UUID.plist (not subdirectories)
     local crash_reporter_dir="$HOME/Library/Application Support/CrashReporter"
     if [[ -d "$crash_reporter_dir" && ${#nospace_name} -ge 3 ]]; then
+        discovery_scan_rc=0
+        _mole_uninstall_materialize_find0 "$discovery_scan_file" \
+            "$crash_reporter_dir" -maxdepth 1 -type f \
+            \( -name "${app_name}_*.plist" -o -name "${nospace_name}_*.plist" \) \
+            -print0 || discovery_scan_rc=$?
+        if [[ $discovery_scan_rc -ne 0 ]]; then
+            rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$discovery_scan_rc"
+        fi
         while IFS= read -r -d '' cr; do
             files_to_clean+=("$cr")
-        done < <(command find "$crash_reporter_dir" -maxdepth 1 -type f \
-            \( -name "${app_name}_*.plist" -o -name "${nospace_name}_*.plist" \) \
-            -print0 2> /dev/null)
+        done < "$discovery_scan_file"
     fi
 
-    # Output results
+    # Preserve discovery order while collapsing exact duplicates. A leftover
+    # can be found first through a bundle-id prefix and again through an
+    # embedded extension id; it should be previewed and removed only once.
     if [[ ${#files_to_clean[@]} -gt 0 ]]; then
-        printf '%s\n' "${files_to_clean[@]}"
+        local -a unique_files_to_clean=()
+        local candidate_path=""
+        local seen_path=""
+        local duplicate_path=false
+        for candidate_path in "${files_to_clean[@]}"; do
+            duplicate_path=false
+            if [[ ${#unique_files_to_clean[@]} -gt 0 ]]; then
+                for seen_path in "${unique_files_to_clean[@]}"; do
+                    if [[ "$candidate_path" == "$seen_path" ]]; then
+                        duplicate_path=true
+                        break
+                    fi
+                done
+            fi
+            [[ "$duplicate_path" == "true" ]] || unique_files_to_clean+=("$candidate_path")
+        done
+        printf '%s\n' "${unique_files_to_clean[@]}"
     fi
+    rm -f -- "$discovery_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
     return 0
 }
 
@@ -1060,6 +1617,7 @@ get_diagnostic_report_paths_for_app() {
     local app_path="$1"
     local app_name="$2"
     local directory="$3"
+    local _MOLE_UNINSTALL_DISCOVERY_DEADLINE="${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-$((SECONDS + MOLE_TIMEOUT_DISK_VERIFY_SEC))}"
     local prefix=""
     local exec_name=""
     local nospace_name="${app_name// /}"
@@ -1068,34 +1626,54 @@ get_diagnostic_report_paths_for_app() {
     [[ ! -d "$directory" ]] && return 0
 
     if [[ -f "$app_path/Contents/Info.plist" ]]; then
-        exec_name=$(defaults read "$app_path/Contents/Info.plist" CFBundleExecutable 2> /dev/null || echo "")
+        # plutil -extract reads one key; defaults read deserializes the whole
+        # plist and routes through cfprefsd. Measured on this plist: ~4.1ms vs
+        # ~2.3ms per call, and this runs per app inside protection loops.
+        exec_name=$(plutil -extract CFBundleExecutable raw "$app_path/Contents/Info.plist" 2> /dev/null || echo "")
         if [[ -z "$exec_name" ]]; then
             exec_name=$(grep -A1 "CFBundleExecutable" "$app_path/Contents/Info.plist" 2> /dev/null | grep "<string>" | sed -n 's/.*<string>\([^<]*\)<\/string>.*/\1/p' | head -1)
         fi
     fi
     prefix="${exec_name:-$nospace_name}"
     [[ -z "$prefix" || ${#prefix} -lt 3 ]] && return 0
+    local -a prefixes=("$prefix")
+    if [[ "$prefix" != *" Helper" ]]; then
+        prefixes+=("$prefix Helper")
+    fi
 
     local dir_abs
     dir_abs=$(cd "$directory" 2> /dev/null && pwd -P 2> /dev/null) || return 0
+    local scan_file=""
+    scan_file=$(create_temp_file) || return 1
+    local scan_rc=0
+    _mole_uninstall_materialize_find0 "$scan_file" "$dir_abs" \
+        -maxdepth 1 -type f -print0 || scan_rc=$?
+    if [[ $scan_rc -ne 0 ]]; then
+        rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+        return "$scan_rc"
+    fi
     while IFS= read -r -d '' f; do
         [[ -z "$f" ]] && continue
         local base
         base=$(basename "$f" 2> /dev/null)
-        case "$base" in
-            "$prefix".* | "$prefix"_* | "$prefix"-*) ;;
-            *) continue ;;
-        esac
+        local matched_prefix=false
+        local report_prefix
+        for report_prefix in "${prefixes[@]}"; do
+            case "$base" in
+                "$report_prefix".* | "$report_prefix"_* | "$report_prefix"-*)
+                    matched_prefix=true
+                    break
+                    ;;
+            esac
+        done
+        [[ "$matched_prefix" == "true" ]] || continue
         case "$base" in
             *.ips | *.crash | *.spin | *.diag) ;;
             *) continue ;;
         esac
         printf '%s\n' "$f"
-    done < <(
-        find "$dir_abs" -maxdepth 1 -type f \
-            \( -name "${prefix}.*" -o -name "${prefix}_*" -o -name "${prefix}-*" \) \
-            -print0 2> /dev/null || true
-    )
+    done < "$scan_file"
+    rm -f -- "$scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
     return 0
 }
 
@@ -1103,13 +1681,20 @@ get_diagnostic_report_paths_for_app() {
 find_app_system_files() {
     local bundle_id="$1"
     local app_name="$2"
+    local _MOLE_UNINSTALL_DISCOVERY_DEADLINE="${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-$((SECONDS + MOLE_TIMEOUT_DISK_VERIFY_SEC))}"
     local -a system_files=()
+    local system_scan_file=""
+    system_scan_file=$(create_temp_file) || return 1
+    local system_scan_rc=0
 
     # Generate all naming variants (same as find_app_files for consistency)
     local nospace_name="${app_name// /}"
     local underscore_name="${app_name// /_}"
     local hyphen_name="${app_name// /-}"
+    local lowercase_name=$(echo "$app_name" | tr '[:upper:]' '[:lower:]')
+    local lowercase_nospace=$(echo "$nospace_name" | tr '[:upper:]' '[:lower:]')
     local lowercase_hyphen=$(echo "$hyphen_name" | tr '[:upper:]' '[:lower:]')
+    local lowercase_underscore=$(echo "$underscore_name" | tr '[:upper:]' '[:lower:]')
 
     # Standard system path patterns
     local -a system_patterns=(
@@ -1118,6 +1703,8 @@ find_app_system_files() {
         "/Library/LaunchAgents/$bundle_id.plist"
         "/Library/LaunchDaemons/$bundle_id.plist"
         "/Library/Preferences/$bundle_id.plist"
+        "/Library/Preferences/$app_name"
+        "/Library/Preferences/$app_name.plist"
         "/Library/Receipts/$bundle_id.bom"
         "/Library/Receipts/$bundle_id.plist"
         "/Library/Frameworks/$app_name.framework"
@@ -1147,6 +1734,12 @@ find_app_system_files() {
             "/Library/Logs/$nospace_name"
             "/Library/Application Support/$underscore_name"
             "/Library/Application Support/$hyphen_name"
+            "/Library/Preferences/$nospace_name"
+            "/Library/Preferences/$nospace_name.plist"
+            "/Library/Preferences/$underscore_name"
+            "/Library/Preferences/$underscore_name.plist"
+            "/Library/Preferences/$hyphen_name"
+            "/Library/Preferences/$hyphen_name.plist"
             "/Library/Caches/$hyphen_name"
             "/Library/Caches/$lowercase_hyphen"
         )
@@ -1160,7 +1753,8 @@ find_app_system_files() {
         case "$p" in
             /Library/Application\ Support | /Library/Application\ Support/ | \
                 /Library/Caches | /Library/Caches/ | \
-                /Library/Logs | /Library/Logs/)
+                /Library/Logs | /Library/Logs/ | \
+                /Library/Preferences | /Library/Preferences/)
                 continue
                 ;;
         esac
@@ -1170,22 +1764,33 @@ find_app_system_files() {
 
     # Vendor-nested system support directories, e.g.:
     #   /Library/Application Support/Avid/Sibelius
-    local vendor_nested_system_path
+    local vendor_nested_system_path vendor_nested_system_output=""
+    system_scan_rc=0
+    vendor_nested_system_output=$(find_vendor_nested_app_paths "$bundle_id" "$app_name" \
+        "/Library/Application Support" \
+        "/Library/Caches" \
+        "/Library/Logs") || system_scan_rc=$?
+    if [[ $system_scan_rc -ne 0 ]]; then
+        rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+        return "$system_scan_rc"
+    fi
     while IFS= read -r vendor_nested_system_path; do
         [[ -n "$vendor_nested_system_path" && -e "$vendor_nested_system_path" ]] && system_files+=("$vendor_nested_system_path")
-    done < <(
-        find_vendor_nested_app_paths "$bundle_id" "$app_name" \
-            "/Library/Application Support" \
-            "/Library/Caches" \
-            "/Library/Logs"
-    )
+    done <<< "$vendor_nested_system_output"
 
     # Shared sample/support files are usually outside the user's Library but
     # are app-owned data (for example /Users/Shared/Sibelius ...).
-    local shared_app_path
+    local shared_app_path shared_app_output=""
+    system_scan_rc=0
+    shared_app_output=$(find_shared_app_paths "$bundle_id" "$app_name" \
+        "/Users/Shared") || system_scan_rc=$?
+    if [[ $system_scan_rc -ne 0 ]]; then
+        rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+        return "$system_scan_rc"
+    fi
     while IFS= read -r shared_app_path; do
         [[ -n "$shared_app_path" && -e "$shared_app_path" ]] && system_files+=("$shared_app_path")
-    done < <(find_shared_app_paths "$bundle_id" "$app_name" "/Users/Shared")
+    done <<< "$shared_app_output"
 
     # System LaunchAgents/LaunchDaemons often use bundle-id-derived helper
     # labels (for example "<bundle>.ProxyConfigHelper.plist"), so scan for
@@ -1195,9 +1800,18 @@ find_app_system_files() {
     # NOT "com.foobar.plist" from an unrelated vendor.
     if mole_is_reverse_dns_bundle_id "$bundle_id"; then
         for base in /Library/LaunchAgents /Library/LaunchDaemons; do
-            [[ -d "$base" ]] && while IFS= read -r -d '' plist; do
+            [[ -d "$base" ]] || continue
+            system_scan_rc=0
+            _mole_uninstall_materialize_find0 "$system_scan_file" "$base" \
+                -maxdepth 1 \( -name "${bundle_id}.plist" -o \
+                -name "${bundle_id}.*.plist" \) -print0 || system_scan_rc=$?
+            if [[ $system_scan_rc -ne 0 ]]; then
+                rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$system_scan_rc"
+            fi
+            while IFS= read -r -d '' plist; do
                 system_files+=("$plist")
-            done < <(command find "$base" -maxdepth 1 \( -name "${bundle_id}.plist" -o -name "${bundle_id}.*.plist" \) -print0 2> /dev/null)
+            done < "$system_scan_file"
         done
     fi
 
@@ -1207,40 +1821,115 @@ find_app_system_files() {
     # plists. A short or generic app name must not match unrelated system agents.
     if [[ ${#app_name} -ge 5 ]] && ! [[ "$app_name" =~ ^(${LAUNCH_AGENT_NAME_COMMON_WORDS})$ ]]; then
         for base in /Library/LaunchAgents /Library/LaunchDaemons; do
-            [[ -d "$base" ]] && while IFS= read -r -d '' plist; do
+            [[ -d "$base" ]] || continue
+            system_scan_rc=0
+            _mole_uninstall_materialize_find0 "$system_scan_file" "$base" \
+                -maxdepth 1 -name "*$app_name*.plist" -print0 || system_scan_rc=$?
+            if [[ $system_scan_rc -ne 0 ]]; then
+                rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$system_scan_rc"
+            fi
+            while IFS= read -r -d '' plist; do
                 local plist_name
                 plist_name=$(basename "$plist")
                 [[ "$plist_name" =~ ^com\.apple\. ]] && continue
                 system_files+=("$plist")
-            done < <(command find "$base" -maxdepth 1 \( -name "*$app_name*.plist" \) -print0 2> /dev/null)
+            done < "$system_scan_file"
         done
     fi
 
     # Privileged Helper Tools and Receipts (special handling)
     # Only search with bundle_id if it's valid (not empty and not "unknown")
     if mole_is_reverse_dns_bundle_id "$bundle_id"; then
-        [[ -d /Library/PrivilegedHelperTools ]] && while IFS= read -r -d '' helper; do
-            if mole_name_starts_with_bundle_id_boundary "$helper" "$bundle_id"; then
-                system_files+=("$helper")
+        if [[ -d /Library/PrivilegedHelperTools ]]; then
+            system_scan_rc=0
+            _mole_uninstall_materialize_find0 "$system_scan_file" \
+                /Library/PrivilegedHelperTools -maxdepth 1 -print0 || system_scan_rc=$?
+            if [[ $system_scan_rc -ne 0 ]]; then
+                rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$system_scan_rc"
             fi
-        done < <(command find /Library/PrivilegedHelperTools -maxdepth 1 -print0 2> /dev/null)
+            while IFS= read -r -d '' helper; do
+                if mole_name_starts_with_bundle_id_boundary "$helper" "$bundle_id"; then
+                    system_files+=("$helper")
+                fi
+            done < "$system_scan_file"
+        fi
 
-        [[ -d /private/var/db/receipts ]] && while IFS= read -r -d '' receipt; do
-            if mole_name_starts_with_bundle_id_boundary "$receipt" "$bundle_id"; then
-                system_files+=("$receipt")
+        if [[ -d /private/var/db/receipts ]]; then
+            system_scan_rc=0
+            _mole_uninstall_materialize_find0 "$system_scan_file" \
+                /private/var/db/receipts -maxdepth 1 -print0 || system_scan_rc=$?
+            if [[ $system_scan_rc -ne 0 ]]; then
+                rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$system_scan_rc"
             fi
-        done < <(command find /private/var/db/receipts -maxdepth 1 -print0 2> /dev/null)
+            while IFS= read -r -d '' receipt; do
+                if mole_name_starts_with_bundle_id_boundary "$receipt" "$bundle_id"; then
+                    system_files+=("$receipt")
+                fi
+            done < "$system_scan_file"
+        fi
     fi
 
-    # Raycast system-level files
+    # Some vendors name privileged helpers after the product rather than the
+    # bundle id. System remnants are review-only in the CLI, but keep
+    # conservative name guards to avoid noisy system matches: reject common app
+    # words case-insensitively and require each matched variant to be at least
+    # 5 characters, since nospace variants can be shorter than app_name itself.
+    local -a helper_name_variants=()
+    if ! _mole_uninstall_is_common_app_name "$app_name"; then
+        local name_variant
+        for name_variant in "$lowercase_name" "$lowercase_nospace" "$lowercase_hyphen" "$lowercase_underscore"; do
+            if [[ ${#name_variant} -ge 5 ]]; then
+                helper_name_variants+=("$name_variant")
+            fi
+        done
+    fi
+    if [[ ${#helper_name_variants[@]} -gt 0 && -d /Library/PrivilegedHelperTools ]]; then
+        system_scan_rc=0
+        _mole_uninstall_materialize_find0 "$system_scan_file" \
+            /Library/PrivilegedHelperTools -maxdepth 1 -print0 || system_scan_rc=$?
+        if [[ $system_scan_rc -ne 0 ]]; then
+            rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$system_scan_rc"
+        fi
+        while IFS= read -r -d '' helper; do
+            local helper_name
+            local helper_lower
+            helper_name=$(basename "$helper")
+            [[ "$helper_name" =~ ^com\.apple\. ]] && continue
+            helper_lower=$(_mole_uninstall_lower "$helper_name")
+            if _mole_uninstall_name_variant_matches "$helper_lower" "${helper_name_variants[@]}"; then
+                system_files+=("$helper")
+            fi
+        done < "$system_scan_file"
+    fi
+
+    # Raycast system-level files (v2 dirs excluded, see find_app_files)
     if [[ "$bundle_id" == "com.raycast.macos" ]]; then
-        [[ -d "/Library/Application Support" ]] && while IFS= read -r -d '' p; do
-            system_files+=("$p")
-        done < <(command find "/Library/Application Support" -maxdepth 1 -type d -iname "*raycast*" -print0 2> /dev/null)
+        if [[ -d "/Library/Application Support" ]]; then
+            system_scan_rc=0
+            _mole_uninstall_materialize_find0 "$system_scan_file" \
+                "/Library/Application Support" -maxdepth 1 -type d \
+                -iname "*raycast*" ! -iname "*raycast-x*" -print0 || system_scan_rc=$?
+            if [[ $system_scan_rc -ne 0 ]]; then
+                rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                return "$system_scan_rc"
+            fi
+            while IFS= read -r -d '' p; do
+                system_files+=("$p")
+            done < "$system_scan_file"
+        fi
     fi
 
     local receipt_files=""
-    receipt_files=$(find_app_receipt_files "$bundle_id")
+    system_scan_rc=0
+    receipt_files=$(find_app_receipt_files "$bundle_id") || system_scan_rc=$?
+    if [[ $system_scan_rc -ne 0 ]]; then
+        rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+        return "$system_scan_rc"
+    fi
 
     local combined_files=""
     if [[ ${#system_files[@]} -gt 0 ]]; then
@@ -1257,11 +1946,14 @@ find_app_system_files() {
     if [[ -n "$combined_files" ]]; then
         printf '%s\n' "$combined_files" | sort -u
     fi
+    rm -f -- "$system_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+    return 0
 }
 
 # Locate files using installation receipts (BOM)
 find_app_receipt_files() {
     local bundle_id="$1"
+    local _MOLE_UNINSTALL_DISCOVERY_DEADLINE="${_MOLE_UNINSTALL_DISCOVERY_DEADLINE:-$((SECONDS + MOLE_TIMEOUT_DISK_VERIFY_SEC))}"
 
     # Skip if no bundle ID
     [[ -z "$bundle_id" || "$bundle_id" == "unknown" ]] && return 0
@@ -1274,15 +1966,25 @@ find_app_receipt_files() {
 
     local -a receipt_files=()
     local -a bom_files=()
+    local receipt_scan_file=""
+    receipt_scan_file=$(create_temp_file) || return 1
 
     # Find receipts matching the bundle ID
     # Usually in /var/db/receipts/
     if [[ -d /private/var/db/receipts ]]; then
+        local receipt_scan_rc=0
+        _mole_uninstall_materialize_find0 "$receipt_scan_file" \
+            /private/var/db/receipts -maxdepth 1 -name "*.bom" \
+            -print0 || receipt_scan_rc=$?
+        if [[ $receipt_scan_rc -ne 0 ]]; then
+            rm -f -- "$receipt_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+            return "$receipt_scan_rc"
+        fi
         while IFS= read -r -d '' bom; do
             if mole_name_starts_with_bundle_id_boundary "$bom" "$bundle_id"; then
                 bom_files+=("$bom")
             fi
-        done < <(find /private/var/db/receipts -maxdepth 1 -name "*.bom" -print0 2> /dev/null)
+        done < "$receipt_scan_file"
     fi
 
     # Process bom files if any found
@@ -1293,8 +1995,23 @@ find_app_receipt_files() {
             # Parse bom file
             # lsbom -f: file paths only
             # -s: suppress output (convert to text)
-            local bom_content
-            bom_content=$(lsbom -f -s "$bom_file" 2> /dev/null)
+            local bom_content=""
+            local bom_rc=0
+            local bom_timeout=""
+            bom_timeout=$(_mole_timeout_with_deadline "$MOLE_TIMEOUT_MEDIUM_PROBE_SEC" \
+                "$_MOLE_UNINSTALL_DISCOVERY_DEADLINE") || bom_rc=$?
+            if [[ $bom_rc -eq 0 ]]; then
+                bom_content=$(run_with_timeout "$bom_timeout" lsbom \
+                    -f -s "$bom_file" < /dev/null 2> /dev/null) || bom_rc=$?
+            fi
+            if [[ $bom_rc -ne 0 ]]; then
+                if [[ $bom_rc -eq 124 || $bom_rc -ge 128 ]]; then
+                    rm -f -- "$receipt_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+                    return "$bom_rc"
+                fi
+                debug_log "Skipping unreadable uninstall receipt: $bom_file"
+                continue
+            fi
 
             while IFS= read -r file_path; do
                 # Standardize path (remove leading dot)
@@ -1335,6 +2052,8 @@ find_app_receipt_files() {
     if [[ ${#receipt_files[@]} -gt 0 ]]; then
         printf '%s\n' "${receipt_files[@]}"
     fi
+    rm -f -- "$receipt_scan_file" 2> /dev/null || true # SAFE: exact tracked temp file created above
+    return 0
 }
 
 receipt_payload_path_is_allowlisted() {
@@ -1386,8 +2105,10 @@ force_kill_app() {
     local exec_name=""
     local bundle_id=""
     if [[ -n "$app_path" && -e "$app_path/Contents/Info.plist" ]]; then
-        exec_name=$(defaults read "$app_path/Contents/Info.plist" CFBundleExecutable 2> /dev/null || echo "")
-        bundle_id=$(defaults read "$app_path/Contents/Info.plist" CFBundleIdentifier 2> /dev/null || echo "")
+        # Targeted key reads (see the CFBundleExecutable note above): defaults
+        # read parses the entire plist for one value.
+        exec_name=$(plutil -extract CFBundleExecutable raw "$app_path/Contents/Info.plist" 2> /dev/null || echo "")
+        bundle_id=$(plutil -extract CFBundleIdentifier raw "$app_path/Contents/Info.plist" 2> /dev/null || echo "")
     fi
 
     # Use executable name for precise matching, fallback to app name
@@ -1408,7 +2129,10 @@ force_kill_app() {
     esac
 
     # Check if process is running using exact match only
-    if ! pgrep -x "$match_pattern" > /dev/null 2>&1; then
+    local process_probe_rc=0
+    pgrep -x "$match_pattern" > /dev/null 2>&1 || process_probe_rc=$?
+    [[ $process_probe_rc -ge 128 ]] && return "$process_probe_rc"
+    if [[ $process_probe_rc -ne 0 ]]; then
         return 0
     fi
 
@@ -1430,19 +2154,30 @@ force_kill_app() {
             escaped_name="${escaped_name//\"/\\\"}"
             quit_target="\"$escaped_name\""
         fi
-        run_with_timeout "$MOLE_TIMEOUT_SHORT_QUERY_SEC" osascript -e "tell application $quit_target to quit" > /dev/null 2>&1 &
+        run_with_timeout "$MOLE_TIMEOUT_SHORT_QUERY_SEC" osascript -e "tell application $quit_target to quit" > /dev/null 2>&1 < /dev/null &
         local quit_pid=$!
         # Poll briefly so the kill ladder skips when the app exits cleanly.
         local quit_wait=20
-        while [[ $quit_wait -gt 0 ]] && pgrep -x "$match_pattern" > /dev/null 2>&1; do
-            sleep 0.1
+        while [[ $quit_wait -gt 0 ]]; do
+            process_probe_rc=0
+            pgrep -x "$match_pattern" > /dev/null 2>&1 || process_probe_rc=$?
+            [[ $process_probe_rc -ge 128 ]] && return "$process_probe_rc"
+            [[ $process_probe_rc -eq 0 ]] || break
+            local sleep_rc=0
+            sleep 0.1 || sleep_rc=$?
+            [[ $sleep_rc -ge 128 ]] && return "$sleep_rc"
             ((quit_wait--))
         done
-        wait "$quit_pid" 2> /dev/null || true
+        local quit_rc=0
+        wait "$quit_pid" 2> /dev/null || quit_rc=$?
+        [[ $quit_rc -ge 128 ]] && return "$quit_rc"
     fi
 
     # Graceful Quit landed: skip the kill ladder entirely.
-    if ! pgrep -x "$match_pattern" > /dev/null 2>&1; then
+    process_probe_rc=0
+    pgrep -x "$match_pattern" > /dev/null 2>&1 || process_probe_rc=$?
+    [[ $process_probe_rc -ge 128 ]] && return "$process_probe_rc"
+    if [[ $process_probe_rc -ne 0 ]]; then
         return 0
     fi
 
@@ -1450,36 +2185,68 @@ force_kill_app() {
     # cached sudo session is already available (no new prompt). The user
     # confirmed uninstall, so a still-running process at this point is
     # blocking a clean result and we trade unsaved state for that.
-    pkill -x "$match_pattern" 2> /dev/null || true
-    sleep 2
-    if ! pgrep -x "$match_pattern" > /dev/null 2>&1; then
+    local kill_rc=0
+    pkill -x "$match_pattern" 2> /dev/null || kill_rc=$?
+    [[ $kill_rc -ge 128 ]] && return "$kill_rc"
+    local sleep_rc=0
+    sleep 2 || sleep_rc=$?
+    [[ $sleep_rc -ge 128 ]] && return "$sleep_rc"
+    process_probe_rc=0
+    pgrep -x "$match_pattern" > /dev/null 2>&1 || process_probe_rc=$?
+    [[ $process_probe_rc -ge 128 ]] && return "$process_probe_rc"
+    if [[ $process_probe_rc -ne 0 ]]; then
         return 0
     fi
 
-    pkill -9 -x "$match_pattern" 2> /dev/null || true
-    sleep 2
-    if ! pgrep -x "$match_pattern" > /dev/null 2>&1; then
+    kill_rc=0
+    pkill -9 -x "$match_pattern" 2> /dev/null || kill_rc=$?
+    [[ $kill_rc -ge 128 ]] && return "$kill_rc"
+    sleep_rc=0
+    sleep 2 || sleep_rc=$?
+    [[ $sleep_rc -ge 128 ]] && return "$sleep_rc"
+    process_probe_rc=0
+    pgrep -x "$match_pattern" > /dev/null 2>&1 || process_probe_rc=$?
+    [[ $process_probe_rc -ge 128 ]] && return "$process_probe_rc"
+    if [[ $process_probe_rc -ne 0 ]]; then
         return 0
     fi
 
-    if [[ "${MOLE_TEST_MODE:-0}" != "1" && "${MOLE_TEST_NO_AUTH:-0}" != "1" ]] &&
-        sudo -n true 2> /dev/null; then
-        sudo pkill -9 -x "$match_pattern" 2> /dev/null || true
-        sleep 2
+    local sudo_probe_rc=1
+    if [[ "${MOLE_TEST_MODE:-0}" != "1" && "${MOLE_TEST_NO_AUTH:-0}" != "1" ]]; then
+        sudo_probe_rc=0
+        sudo -n true 2> /dev/null || sudo_probe_rc=$?
+        [[ $sudo_probe_rc -ge 128 ]] && return "$sudo_probe_rc"
+    fi
+    if [[ $sudo_probe_rc -eq 0 ]]; then
+        kill_rc=0
+        sudo pkill -9 -x "$match_pattern" 2> /dev/null || kill_rc=$?
+        [[ $kill_rc -ge 128 ]] && return "$kill_rc"
+        sleep_rc=0
+        sleep 2 || sleep_rc=$?
+        [[ $sleep_rc -ge 128 ]] && return "$sleep_rc"
     fi
 
     # Final retries for stubborn processes (e.g. apps mid-fsync that need a
     # moment to fully exit after SIGKILL).
     local retries=3
     while [[ $retries -gt 0 ]]; do
-        if ! pgrep -x "$match_pattern" > /dev/null 2>&1; then
+        process_probe_rc=0
+        pgrep -x "$match_pattern" > /dev/null 2>&1 || process_probe_rc=$?
+        [[ $process_probe_rc -ge 128 ]] && return "$process_probe_rc"
+        if [[ $process_probe_rc -ne 0 ]]; then
             return 0
         fi
-        sleep 1
+        sleep_rc=0
+        sleep 1 || sleep_rc=$?
+        [[ $sleep_rc -ge 128 ]] && return "$sleep_rc"
         ((retries--))
     done
 
-    pgrep -x "$match_pattern" > /dev/null 2>&1 && return 1 || return 0
+    process_probe_rc=0
+    pgrep -x "$match_pattern" > /dev/null 2>&1 || process_probe_rc=$?
+    [[ $process_probe_rc -ge 128 ]] && return "$process_probe_rc"
+    [[ $process_probe_rc -eq 0 ]] && return 1
+    return 0
 }
 
 # Note: calculate_total_size() is defined in lib/core/file_ops.sh

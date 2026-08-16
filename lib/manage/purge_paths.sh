@@ -93,8 +93,8 @@ manage_purge_paths() {
 
     # Open in editor
     local editor="${EDITOR:-${VISUAL:-vim}}"
-    echo -e "正在用 ${CYAN}$editor${NC} 打开..."
-    echo -e "${GRAY}保存并退出以应用更改。留空使用默认值。${NC}"
+    echo -e "Opening in ${CYAN}$editor${NC}..."
+    echo -e "${GRAY}Save and exit to apply changes. Leave empty to use defaults.${NC}"
     echo ""
 
     # Wait for user to read

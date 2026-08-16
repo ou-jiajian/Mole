@@ -93,6 +93,39 @@ func TestValidateFlags(t *testing.T) {
 	}
 }
 
+func TestParseWatchInterval(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		want    time.Duration
+		wantErr bool
+	}{
+		{name: "default", raw: "", want: refreshInterval},
+		{name: "duration", raw: "250ms", want: 250 * time.Millisecond},
+		{name: "invalid", raw: "soon", wantErr: true},
+		{name: "zero", raw: "0s", wantErr: true},
+		{name: "negative", raw: "-1s", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseWatchInterval(tt.raw)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("parseWatchInterval(%q) returned nil error", tt.raw)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseWatchInterval(%q) error = %v", tt.raw, err)
+			}
+			if got != tt.want {
+				t.Fatalf("parseWatchInterval(%q) = %v, want %v", tt.raw, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestNextCollectionModeUsesFastFirstThenPeriodicFull(t *testing.T) {
 	now := time.Now()
 
@@ -124,6 +157,30 @@ func TestNextCollectionModeUsesFastFirstThenPeriodicFull(t *testing.T) {
 	m.lastFullAt = now.Add(-slowRefreshInterval)
 	if got := m.nextCollectionMode(now); got != collectionFull {
 		t.Fatalf("expired full collection mode = %v, want full", got)
+	}
+}
+
+func TestWatchStateUsesSharedCollectionCadence(t *testing.T) {
+	now := time.Now()
+
+	st := watchState{}
+	if got := st.nextMode(now); got != collectionFast {
+		t.Fatalf("new watchState nextMode() = %v, want fast", got)
+	}
+
+	st.ready = true
+	if got := st.nextMode(now); got != collectionFull {
+		t.Fatalf("ready watchState without full collection = %v, want full", got)
+	}
+
+	st.lastFullAt = now
+	if got := st.nextMode(now); got != collectionProcess {
+		t.Fatalf("fresh full without process collection mode = %v, want process", got)
+	}
+
+	st.lastProcessAt = now
+	if got := st.nextMode(now); got != collectionFast {
+		t.Fatalf("fresh process collection mode = %v, want fast", got)
 	}
 }
 
@@ -271,14 +328,14 @@ func TestCollectorOverridesFastDisksWithCorrectedCache(t *testing.T) {
 	collector := NewCollector(ProcessWatchOptions{})
 	collector.cacheEnrichment(MetricsSnapshot{
 		Disks: []DiskStatus{
-			{Mount: "/", Total: 1000, Used: 600, UsedPercent: 60, External: false},
+			{Mount: "/", Total: 1000, Used: 600, UsedPercent: 60, External: false, SmartStatus: smartStatusVerified},
 		},
 	})
 
 	// Fast path produced raw statfs numbers that ignore APFS purgeable space.
 	next := MetricsSnapshot{
 		Disks: []DiskStatus{
-			{Mount: "/", Total: 1000, Used: 900, UsedPercent: 90, External: true},
+			{Mount: "/", Total: 1000, Used: 900, UsedPercent: 90, External: true, SmartStatus: smartStatusUnknown},
 		},
 	}
 
@@ -287,7 +344,8 @@ func TestCollectorOverridesFastDisksWithCorrectedCache(t *testing.T) {
 	if len(next.Disks) != 1 {
 		t.Fatalf("expected one disk, got %#v", next.Disks)
 	}
-	if next.Disks[0].Used != 600 || next.Disks[0].UsedPercent != 60 || next.Disks[0].External {
+	if next.Disks[0].Used != 600 || next.Disks[0].UsedPercent != 60 ||
+		next.Disks[0].External || next.Disks[0].SmartStatus != smartStatusVerified {
 		t.Fatalf("expected corrected disk values from cache, got %#v", next.Disks[0])
 	}
 }

@@ -9,15 +9,17 @@ set -euo pipefail
 # ============================================================================
 
 check_touchid_support() {
+    local pam_sudo_file="${MOLE_PAM_SUDO_FILE:-/etc/pam.d/sudo}"
+    local pam_sudo_local_file="${MOLE_PAM_SUDO_LOCAL_FILE:-$(dirname "$pam_sudo_file")/sudo_local}"
+
     # Check sudo_local first (Sonoma+)
-    if [[ -f /etc/pam.d/sudo_local ]]; then
-        grep -q "pam_tid.so" /etc/pam.d/sudo_local 2> /dev/null
-        return $?
+    if [[ -f "$pam_sudo_local_file" ]] && grep -q "pam_tid.so" "$pam_sudo_local_file" 2> /dev/null; then
+        return 0
     fi
 
     # Fallback to checking sudo directly
-    if [[ -f /etc/pam.d/sudo ]]; then
-        grep -q "pam_tid.so" /etc/pam.d/sudo 2> /dev/null
+    if [[ -f "$pam_sudo_file" ]]; then
+        grep -q "pam_tid.so" "$pam_sudo_file" 2> /dev/null
         return $?
     fi
     return 1
@@ -95,9 +97,16 @@ request_sudo_access() {
         # Clear sudo cache before attempting authentication
         sudo -k 2> /dev/null
 
-        # Display native macOS password dialog
+        # Display native macOS password dialog. prompt_msg can carry on-disk
+        # app display names (batch uninstall builds it from ${sudo_apps[*]}),
+        # so escape backslashes and double quotes before embedding it in the
+        # AppleScript string literal, or an app named with an embedded quote
+        # could break out and run `do shell script`. Same escaping as
+        # force_kill_app and remove_login_item.
+        local escaped_msg="${prompt_msg//\\/\\\\}"
+        escaped_msg="${escaped_msg//\"/\\\"}"
         local password
-        password=$(osascript -e "display dialog \"$prompt_msg\" default answer \"\" with title \"Mole\" with icon caution with hidden answer" -e 'text returned of result' 2> /dev/null)
+        password=$(osascript -e "display dialog \"$escaped_msg\" default answer \"\" with title \"Mole\" with icon caution with hidden answer" -e 'text returned of result' 2> /dev/null)
 
         if [[ -z "$password" ]]; then
             # User cancelled the dialog
@@ -198,6 +207,31 @@ request_sudo_access() {
     return 1
 }
 
+request_sudo_access_with_password() {
+    local password="$1"
+    local prompt_msg="${2:-Admin access required}"
+
+    # Tests must never trigger real password or Touch ID prompts.
+    if [[ "${MOLE_TEST_MODE:-0}" == "1" || "${MOLE_TEST_NO_AUTH:-0}" == "1" ]]; then
+        return 1
+    fi
+
+    if [[ -z "$password" ]]; then
+        request_sudo_access "$prompt_msg"
+        return $?
+    fi
+
+    sudo -k 2> /dev/null
+
+    if printf '%s\n' "$password" | sudo -S -p "" -v > /dev/null 2>&1; then
+        unset password
+        return 0
+    fi
+
+    unset password
+    return 1
+}
+
 # ============================================================================
 # Sudo Session Management
 # ============================================================================
@@ -215,17 +249,17 @@ _start_sudo_keepalive() {
         # This prevents immediately triggering Touch ID again
         sleep 2
 
-        local retry_count=0
         while true; do
             if ! sudo -n -v 2> /dev/null; then
-                retry_count=$((retry_count + 1))
-                if [[ $retry_count -ge 3 ]]; then
-                    exit 1
-                fi
+                # A failed refresh is harmless and often transient (authd
+                # busy, machine waking). Giving up after a few misses is what
+                # let the timestamp lapse minutes into a long install and
+                # forced a second authentication prompt; `-n` never prompts,
+                # so retrying costs nothing. Exit only with the parent.
+                kill -0 "$$" 2> /dev/null || exit
                 sleep 5
                 continue
             fi
-            retry_count=0
             sleep 30
             kill -0 "$$" 2> /dev/null || exit
         done
@@ -251,6 +285,36 @@ has_sudo_session() {
     fi
 
     sudo -n true 2> /dev/null
+}
+
+adopt_sudo_session() {
+    if [[ "${MOLE_TEST_MODE:-0}" == "1" || "${MOLE_TEST_NO_AUTH:-0}" == "1" ]]; then
+        MOLE_SUDO_ESTABLISHED="false"
+        return 1
+    fi
+
+    if [[ "$MOLE_SUDO_ESTABLISHED" == "true" && -n "$MOLE_SUDO_KEEPALIVE_PID" ]]; then
+        if has_sudo_session; then
+            return 0
+        fi
+        _stop_sudo_keepalive "$MOLE_SUDO_KEEPALIVE_PID"
+        MOLE_SUDO_KEEPALIVE_PID=""
+        MOLE_SUDO_ESTABLISHED="false"
+    fi
+
+    if ! sudo -n -v 2> /dev/null; then
+        MOLE_SUDO_ESTABLISHED="false"
+        return 1
+    fi
+
+    if [[ -n "$MOLE_SUDO_KEEPALIVE_PID" ]]; then
+        _stop_sudo_keepalive "$MOLE_SUDO_KEEPALIVE_PID"
+        MOLE_SUDO_KEEPALIVE_PID=""
+    fi
+
+    MOLE_SUDO_KEEPALIVE_PID=$(_start_sudo_keepalive)
+    MOLE_SUDO_ESTABLISHED="true"
+    return 0
 }
 
 # Request administrative access
@@ -294,6 +358,44 @@ ensure_sudo_session() {
         MOLE_SUDO_ESTABLISHED="false"
         return 1
     fi
+
+    # Start keepalive
+    MOLE_SUDO_KEEPALIVE_PID=$(_start_sudo_keepalive)
+
+    MOLE_SUDO_ESTABLISHED="true"
+    return 0
+}
+
+ensure_sudo_session_with_password() {
+    local password="$1"
+    local prompt="${2:-Admin access required}"
+
+    # Check if already established
+    if has_sudo_session && [[ "$MOLE_SUDO_ESTABLISHED" == "true" ]]; then
+        unset password
+        return 0
+    fi
+
+    if [[ "${MOLE_TEST_MODE:-0}" == "1" || "${MOLE_TEST_NO_AUTH:-0}" == "1" ]]; then
+        MOLE_SUDO_ESTABLISHED="false"
+        unset password
+        return 1
+    fi
+
+    # Stop old keepalive if exists
+    if [[ -n "$MOLE_SUDO_KEEPALIVE_PID" ]]; then
+        _stop_sudo_keepalive "$MOLE_SUDO_KEEPALIVE_PID"
+        MOLE_SUDO_KEEPALIVE_PID=""
+    fi
+
+    # Request sudo access
+    if ! request_sudo_access_with_password "$password" "$prompt"; then
+        MOLE_SUDO_ESTABLISHED="false"
+        unset password
+        return 1
+    fi
+
+    unset password
 
     # Start keepalive
     MOLE_SUDO_KEEPALIVE_PID=$(_start_sudo_keepalive)

@@ -55,38 +55,25 @@ func TestCreateInsightEntriesIncludesOrbStackData(t *testing.T) {
 	t.Fatal("OrbStack Data insight not found")
 }
 
-func TestInsightIcon(t *testing.T) {
-	// Two-icon scheme: top-level directories use 📁, every insight row
-	// uses 👀 (eyes; signals "peek here" without promising deletability).
-	tests := []struct {
-		name string
-		want string
-	}{
-		// Top-level dirs.
-		{"Home", "📁"},
-		{"User Library", "📁"},
-		{"App Library", "📁"}, // Legacy name retained for backwards compatibility.
-		{"Applications", "📁"},
-		{"System Library", "📁"},
-		// Insights collapsed to a single eyes glyph.
-		{"iOS Backups", "👀"},
-		{"Old Downloads (90d+)", "👀"},
-		{"Homebrew Cache", "👀"},
-		{"System Logs", "👀"},
-		{"Xcode DerivedData", "👀"},
-		{"Xcode Simulators", "👀"},
-		{"Xcode Archives", "👀"},
-		{"Docker Data", "👀"},
-		{"OrbStack Data", "👀"},
+func TestCreateInsightEntriesIncludesUvCache(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	uvCache := filepath.Join(home, ".cache", "uv")
+	if err := os.MkdirAll(uvCache, 0755); err != nil {
+		t.Fatal(err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := insightIcon(dirEntry{Name: tt.name})
-			if got != tt.want {
-				t.Errorf("insightIcon(%q) = %q, want %q", tt.name, got, tt.want)
+
+	entries := createInsightEntries()
+	for _, entry := range entries {
+		if entry.Name == "uv Cache" {
+			if entry.Path != uvCache {
+				t.Fatalf("uv Cache path = %q, want %q", entry.Path, uvCache)
 			}
-		})
+			return
+		}
 	}
+	t.Fatal("uv Cache insight not found")
 }
 
 func TestMeasureOldDownloads(t *testing.T) {

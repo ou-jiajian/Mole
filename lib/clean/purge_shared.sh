@@ -8,41 +8,48 @@ if [[ -n "${MOLE_PURGE_SHARED_LOADED:-}" ]]; then
 fi
 readonly MOLE_PURGE_SHARED_LOADED=1
 
+MOLE_PURGE_PHYSICAL_HOME="$HOME"
+if [[ -d "$HOME" ]]; then
+    MOLE_PURGE_PHYSICAL_HOME=$(cd "$HOME" 2> /dev/null && pwd -P) || MOLE_PURGE_PHYSICAL_HOME="$HOME"
+fi
+readonly MOLE_PURGE_PHYSICAL_HOME
+
 # Canonical purge targets (heavy project build artifacts).
 readonly MOLE_PURGE_TARGETS=(
     "node_modules"
-    "target"        # Rust, Maven
-    "build"         # Gradle, various
-    "dist"          # JS builds
-    "venv"          # Python
-    ".venv"         # Python
-    ".pytest_cache" # Python (pytest)
-    ".mypy_cache"   # Python (mypy)
-    ".tox"          # Python (tox virtualenvs)
-    ".nox"          # Python (nox virtualenvs)
-    ".ruff_cache"   # Python (ruff)
-    ".gradle"       # Gradle local
-    "__pycache__"   # Python
-    ".next"         # Next.js
-    ".nuxt"         # Nuxt.js
-    ".output"       # Nuxt.js
-    "vendor"        # PHP Composer
-    "bin"           # .NET build output (guarded; see is_protected_purge_artifact)
-    "obj"           # C# / Unity
-    ".turbo"        # Turborepo cache
-    ".parcel-cache" # Parcel bundler
-    ".dart_tool"    # Flutter/Dart build cache
-    ".zig-cache"    # Zig
-    "zig-out"       # Zig
-    ".angular"      # Angular
-    ".svelte-kit"   # SvelteKit
-    ".astro"        # Astro
-    "coverage"      # Code coverage reports
-    "DerivedData"   # Xcode
-    "Pods"          # CocoaPods
-    ".cxx"          # React Native Android NDK build cache
-    ".expo"         # Expo
-    ".build"        # Swift Package Manager
+    "target"            # Rust, Maven
+    "build"             # Gradle, various
+    "dist"              # JS builds
+    "venv"              # Python
+    ".venv"             # Python
+    ".pytest_cache"     # Python (pytest)
+    ".mypy_cache"       # Python (mypy)
+    ".tox"              # Python (tox virtualenvs)
+    ".nox"              # Python (nox virtualenvs)
+    ".ruff_cache"       # Python (ruff)
+    ".gradle"           # Gradle local
+    ".terragrunt-cache" # Terragrunt downloaded modules/providers
+    "__pycache__"       # Python
+    ".next"             # Next.js
+    ".nuxt"             # Nuxt.js
+    ".output"           # Nuxt.js
+    "vendor"            # PHP Composer
+    "bin"               # .NET build output (guarded; see is_protected_purge_artifact)
+    "obj"               # C# / Unity
+    ".turbo"            # Turborepo cache
+    ".parcel-cache"     # Parcel bundler
+    ".dart_tool"        # Flutter/Dart build cache
+    ".zig-cache"        # Zig
+    "zig-out"           # Zig
+    ".angular"          # Angular
+    ".svelte-kit"       # SvelteKit
+    ".astro"            # Astro
+    "coverage"          # Code coverage reports
+    "DerivedData"       # Xcode
+    "Pods"              # CocoaPods
+    ".cxx"              # React Native Android NDK build cache
+    ".expo"             # Expo
+    ".build"            # Swift Package Manager
 )
 
 readonly MOLE_PURGE_DEFAULT_SEARCH_PATHS=(
@@ -55,6 +62,14 @@ readonly MOLE_PURGE_DEFAULT_SEARCH_PATHS=(
     "$HOME/Repos"
     "$HOME/Development"
     "$HOME/Library/CloudStorage"
+    # AI agent worktree containers. These sit under dot directories, which
+    # discover_project_dirs cannot reach: it globs "$HOME"/*/ and
+    # is_project_container rejects any basename starting with a dot. Listing
+    # the exact containers keeps the checkouts inside them in scope for
+    # rebuildable-artifact cleanup without widening discovery to dot
+    # directories in general. The worktrees themselves are never removed.
+    "$HOME/.codex/worktrees"
+    "$HOME/.claude/worktrees"
 )
 
 readonly MOLE_PURGE_MONOREPO_INDICATORS=(
@@ -62,6 +77,10 @@ readonly MOLE_PURGE_MONOREPO_INDICATORS=(
     "pnpm-workspace.yaml"
     "nx.json"
     "rush.json"
+    # A repository or worktree is the project-wide ownership boundary even
+    # when nested packages have their own manifests. Keep .git in the project
+    # indicators too because container discovery consumes that list directly.
+    ".git"
 )
 
 readonly MOLE_PURGE_PROJECT_INDICATORS=(
@@ -72,6 +91,7 @@ readonly MOLE_PURGE_PROJECT_INDICATORS=(
     "requirements.txt"
     "pom.xml"
     "build.gradle"
+    "terragrunt.hcl"
     "Gemfile"
     "composer.json"
     "pubspec.yaml"
@@ -90,6 +110,20 @@ readonly MOLE_PURGE_QUICK_HINT_EXCLUDED_TARGETS=(
     "bin"
     "vendor"
 )
+
+mole_purge_is_cloud_synced_path() {
+    local path="${1:-}"
+    [[ -n "$path" ]] || return 1
+
+    case "$path" in
+        "$HOME/Library/CloudStorage" | "$HOME/Library/CloudStorage/"* | "$HOME/Library/Mobile Documents" | "$HOME/Library/Mobile Documents/"* | \
+            "$MOLE_PURGE_PHYSICAL_HOME/Library/CloudStorage" | "$MOLE_PURGE_PHYSICAL_HOME/Library/CloudStorage/"* | "$MOLE_PURGE_PHYSICAL_HOME/Library/Mobile Documents" | "$MOLE_PURGE_PHYSICAL_HOME/Library/Mobile Documents/"*)
+            return 0
+            ;;
+    esac
+
+    return 1
+}
 
 mole_purge_is_project_root() {
     local dir="$1"
@@ -142,10 +176,18 @@ mole_purge_quick_hint_target_names() {
 # On case-insensitive macOS (APFS), ~/Code and ~/code point to the same
 # directory but with different display names.  This function returns the
 # real (on-disk) path so that string comparisons work correctly for dedup.
+#
+# Uses the external /bin/pwd rather than the bash builtin: bash's `pwd -P`
+# resolves symlink chains in $PWD but reuses the casing of the `cd`
+# argument instead of querying the filesystem, so on case-insensitive APFS
+# it returns ~/Workspace even when the on-disk directory is ~/workspace.
+# That breaks the string dedup in discover_project_dirs and a project
+# appears twice (#1416). /bin/pwd calls getcwd(3), which returns the real
+# on-disk name.
 mole_purge_resolve_path_case() {
     local path="$1"
     if [[ -d "$path" ]]; then
-        (cd "$path" 2> /dev/null && pwd -P) || printf '%s\n' "$path"
+        (cd "$path" 2> /dev/null && /bin/pwd -P) || printf '%s\n' "$path"
     else
         printf '%s\n' "$path"
     fi

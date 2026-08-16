@@ -13,6 +13,13 @@ func (m model) View() string {
 	var b strings.Builder
 	fmt.Fprintln(&b)
 
+	// A warm cache already loaded for the current path keeps rendering while the
+	// background refresh runs, instead of blanking to a scan-only screen. Fresh
+	// scans (no cached entries yet) still fall back to the scan-only view.
+	showingCachedView := m.scanning && !m.inOverviewMode() && m.viewNeedsRefresh && len(m.entries) > 0
+	showingLiveScanView := m.scanning && !m.inOverviewMode() && len(m.entries) > 0 &&
+		(m.liveScanEvents != nil || len(m.liveScanningPaths) > 0)
+
 	if m.inOverviewMode() {
 		freeLabel := ""
 		if m.diskFree > 0 {
@@ -38,7 +45,7 @@ func (m model) View() string {
 		}
 	} else {
 		fmt.Fprintf(&b, "%sAnalyze Disk%s  %s%s%s", colorPurpleBold, colorReset, colorGray, displayPath(m.path), colorReset)
-		if !m.scanning {
+		if !m.scanning || m.totalSize > 0 {
 			fmt.Fprintf(&b, "  |  Total: %s", humanizeBytes(m.totalSize))
 		}
 		fmt.Fprintf(&b, "\n\n")
@@ -50,11 +57,22 @@ func (m model) View() string {
 			count = atomic.LoadInt64(m.deleteCount)
 		}
 
-		fmt.Fprintf(&b, "%s%s%s%s Deleting: %s%s items%s removed, please wait...\n",
-			colorCyan, colorBold,
-			spinnerFrames[m.spinner],
-			colorReset,
-			colorYellow, formatNumber(count), colorReset)
+		// The counter is path-level and only advances once a move completes, so a
+		// single large directory sits at zero for the whole operation. Printing
+		// "0 items removed" there reads as a stalled delete; say what is happening
+		// instead, and show the tally only once it means something.
+		if count > 0 {
+			fmt.Fprintf(&b, "%s%s%s%s Deleting: %s%s items%s removed, please wait...\n",
+				colorCyan, colorBold,
+				spinnerFrames[m.spinner],
+				colorReset,
+				colorYellow, formatNumber(count), colorReset)
+		} else {
+			fmt.Fprintf(&b, "%s%s%s%s Deleting: moving to Trash, please wait...\n",
+				colorCyan, colorBold,
+				spinnerFrames[m.spinner],
+				colorReset)
+		}
 
 		return b.String()
 	}
@@ -76,7 +94,7 @@ func (m model) View() string {
 			progressPrefix = fmt.Sprintf(" %s%.0f%%%s", colorCyan, percent, colorReset)
 		}
 
-		fmt.Fprintf(&b, "%s%s%s%s Scanning%s: %s%s files%s, %s%s dirs%s, %s%s%s\n",
+		statusLine := fmt.Sprintf("%s%s%s%s Scanning%s: %s%s files%s, %s%s dirs%s, %s%s%s",
 			colorCyan, colorBold,
 			spinnerFrames[m.spinner],
 			colorReset,
@@ -85,21 +103,58 @@ func (m model) View() string {
 			colorYellow, formatNumber(dirsScanned), colorReset,
 			colorGreen, humanizeBytes(bytesScanned), colorReset)
 
+		currentPath := ""
 		if m.currentPath != nil {
-			currentPath, _ := m.currentPath.Load().(string)
-			if currentPath != "" {
-				shortPath := displayPath(currentPath)
-				shortPath = truncateMiddle(shortPath, 50)
-				fmt.Fprintf(&b, "%s%s%s\n", colorGray, shortPath, colorReset)
+			currentPath, _ = m.currentPath.Load().(string)
+		}
+
+		if currentPath == "" {
+			fmt.Fprintf(&b, "%s\n", statusLine)
+		} else {
+			// Keep the path on the status line whenever the terminal is wide
+			// enough to show a useful piece of it, instead of always spending a
+			// second row on it. The old code also truncated to a fixed 50
+			// columns, which cut paths short on wide terminals and could still
+			// overflow narrow ones.
+			shortPath := displayPath(currentPath)
+			const pathSeparator = "  "
+			remaining := m.width - displayWidth(statusLine) - len(pathSeparator)
+			if remaining >= scanPathInlineMinWidth {
+				fmt.Fprintf(&b, "%s%s%s%s%s\n", statusLine, pathSeparator,
+					colorGray, truncateMiddle(shortPath, remaining), colorReset)
+			} else {
+				pathWidth := max(m.width, scanPathInlineMinWidth)
+				fmt.Fprintf(&b, "%s\n%s%s%s\n", statusLine,
+					colorGray, truncateMiddle(shortPath, pathWidth), colorReset)
 			}
 		}
 
-		return b.String()
+		if !showingCachedView && !showingLiveScanView {
+			return b.String()
+		}
+		if showingCachedView {
+			fmt.Fprintf(&b, "%sShowing cached results while refreshing...%s\n\n", colorGray, colorReset)
+		} else {
+			fmt.Fprintln(&b)
+		}
 	}
 
 	if m.showLargeFiles {
+		if m.largeFiltering || m.largeFilter != "" {
+			cursor := ""
+			if m.largeFiltering {
+				cursor = "▌"
+			}
+			fmt.Fprintf(&b, "  %sFilter:%s %s%s  %s(%d matches)%s\n\n",
+				colorCyan, colorReset, m.largeFilter, cursor,
+				colorGray, len(m.largeFiles), colorReset)
+		}
 		if len(m.largeFiles) == 0 {
-			fmt.Fprintln(&b, "  No large files found")
+			if m.largeFilter != "" {
+				fmt.Fprintf(&b, "  No matches for %q\n", m.largeFilter)
+			} else {
+				fmt.Fprintln(&b, "  No large files found")
+			}
 		} else {
 			viewport := calculateViewport(m.height, true)
 			start := max(m.largeOffset, 0)
@@ -138,17 +193,29 @@ func (m model) View() string {
 			}
 		}
 	} else {
+		if !m.inOverviewMode() && (m.entryFiltering || m.entryFilter != "") {
+			cursor := ""
+			if m.entryFiltering {
+				cursor = "▌"
+			}
+			fmt.Fprintf(&b, "  %sFilter:%s %s%s  %s(%d matches)%s\n\n",
+				colorCyan, colorReset, m.entryFilter, cursor,
+				colorGray, len(m.entries), colorReset)
+		}
 		if len(m.entries) == 0 {
-			fmt.Fprintln(&b, "  Empty directory")
+			if !m.inOverviewMode() && m.entryFilter != "" {
+				fmt.Fprintf(&b, "  No matches for %q\n", m.entryFilter)
+			} else {
+				fmt.Fprintln(&b, "  Empty directory")
+			}
 		} else {
 			if m.inOverviewMode() {
 				maxSize := maxDirEntrySize(m.entries)
 				totalSize := m.totalSize
-				// Overview paths are short; fixed width keeps layout stable.
+				// Overview labels are short; fixed width keeps layout stable.
 				nameWidth := 22
 				displayNum := 0
 				for idx, entry := range m.entries {
-					icon := insightIcon(entry)
 					sizeVal := entry.Size
 					// Hide entries that have been scanned and are empty (standard dirs
 					// are never 0 bytes; only insight dirs in unused tool paths are).
@@ -162,28 +229,30 @@ func (m model) View() string {
 					} else {
 						percent = 0
 					}
-					percentStr := fmt.Sprintf("%5.1f%%", percent)
-					if totalSize == 0 || sizeVal < 0 {
-						percentStr = "  --  "
-					}
+					percentStr := formatPercent(percent, totalSize > 0 && sizeVal >= 0)
 					bar := coloredProgressBar(barValue, maxSize, percent)
-					sizeText := "pending.."
+					// Pending rows reuse the list view's scanning idiom: the
+					// animated spinner keeps the row visibly alive, and the
+					// string is exactly 10 display columns, flush with the
+					// right-aligned sizes (a static placeholder read as stuck).
+					sizeText := fmt.Sprintf("%s scanning", spinnerFrames[m.spinner])
+					sizeColor := colorCyan
 					if sizeVal >= 0 {
 						sizeText = humanizeBytes(sizeVal)
-					}
-					sizeColor := colorGray
-					if sizeVal >= 0 && totalSize > 0 {
-						sizeColor = sizeColorForPercent(percent)
+						sizeColor = colorGray
+						if totalSize > 0 {
+							sizeColor = sizeColorForPercent(percent)
+						}
 					}
 					entryPrefix := "   "
 					name := trimNameWithWidth(entry.Name, nameWidth)
 					paddedName := padName(name, nameWidth)
-					nameSegment := fmt.Sprintf("%s %s", icon, paddedName)
+					nameSegment := paddedName
 					numColor := ""
 					percentColor := ""
 					if idx == m.selected {
 						entryPrefix = fmt.Sprintf(" %s%s▶%s ", colorCyan, colorBold, colorReset)
-						nameSegment = fmt.Sprintf("%s%s %s%s", colorCyan, icon, paddedName, colorReset)
+						nameSegment = fmt.Sprintf("%s%s%s", colorCyan, paddedName, colorReset)
 						numColor = colorCyan
 						percentColor = colorCyan
 						sizeColor = colorCyan
@@ -191,11 +260,8 @@ func (m model) View() string {
 					displayNum++
 					displayIndex := displayNum
 
-					// In overview mode the leading icon (👀 vs 📁) already
-					// signals "inspect this" vs "browse this", so the
-					// right-side hint shows only the unused-time tag.
-					// The cleanable broom (🧹) belongs to non-overview
-					// directory rows, where it acts as a per-row marker.
+					// Keep the overview text-only. Emoji width and baselines vary
+					// across terminals, while every row has the same navigation.
 					hintLabel := ""
 					if unusedTime := formatUnusedTime(entry.LastAccess); unusedTime != "" {
 						hintLabel = fmt.Sprintf("%s%s%s", colorGray, unusedTime, colorReset)
@@ -225,16 +291,24 @@ func (m model) View() string {
 					if entry.IsDir {
 						icon = "📁"
 					}
-					size := humanizeBytes(entry.Size)
 					name := trimNameWithWidth(entry.Name, nameWidth)
 					paddedName := padName(name, nameWidth)
 
-					percent := float64(entry.Size) / float64(m.totalSize) * 100
-					percentStr := fmt.Sprintf("%5.1f%%", percent)
+					sizeValue := max(entry.Size, 0)
+					percent := 0.0
+					if m.totalSize > 0 && entry.Size >= 0 {
+						percent = float64(entry.Size) / float64(m.totalSize) * 100
+					}
+					percentStr := formatPercent(percent, entry.Size >= 0 && m.totalSize > 0)
 
-					bar := coloredProgressBar(entry.Size, maxSize, percent)
+					bar := coloredProgressBar(sizeValue, maxSize, percent)
 
 					sizeColor := sizeColorForPercent(percent)
+					size := humanizeBytes(entry.Size)
+					if entry.Size < 0 {
+						size = fmt.Sprintf("%s %s", spinnerFrames[m.spinner], "scanning")
+						sizeColor = colorCyan
+					}
 
 					isMultiSelected := m.multiSelected != nil && m.multiSelected[entry.Path]
 					selectIcon := "○"
@@ -264,15 +338,19 @@ func (m model) View() string {
 					displayIndex := idx + 1
 
 					hintLabel := entryHintLabel(entry)
+					activityMarker := "|"
+					if entry.IsDir && m.liveScanningPaths != nil && m.liveScanningPaths[entry.Path] {
+						activityMarker = fmt.Sprintf("%s%s%s%s", colorCyan, colorBold, spinnerFrames[m.spinner], colorReset)
+					}
 
 					if hintLabel == "" {
-						fmt.Fprintf(&b, "%s%s %s%2d.%s %s %s%s%s  |  %s %s%10s%s\n",
+						fmt.Fprintf(&b, "%s%s %s%2d.%s %s %s%s%s  %s  %s %s%10s%s\n",
 							entryPrefix, selectIcon, numColor, displayIndex, colorReset, bar, percentColor, percentStr, colorReset,
-							nameSegment, sizeColor, size, colorReset)
+							activityMarker, nameSegment, sizeColor, size, colorReset)
 					} else {
-						fmt.Fprintf(&b, "%s%s %s%2d.%s %s %s%s%s  |  %s %s%10s%s  %s\n",
+						fmt.Fprintf(&b, "%s%s %s%2d.%s %s %s%s%s  %s  %s %s%10s%s  %s\n",
 							entryPrefix, selectIcon, numColor, displayIndex, colorReset, bar, percentColor, percentStr, colorReset,
-							nameSegment, sizeColor, size, colorReset, hintLabel)
+							activityMarker, nameSegment, sizeColor, size, colorReset, hintLabel)
 					}
 				}
 			}
@@ -287,26 +365,36 @@ func (m model) View() string {
 			fmt.Fprintf(&b, "%s↑↓→ | Enter | R Refresh | O Open | P Preview | F File | Esc/Q Quit%s\n", colorGray, colorReset)
 		}
 	} else if m.showLargeFiles {
-		selectCount := len(m.largeMultiSelected)
-		if selectCount > 0 {
-			fmt.Fprintf(&b, "%s↑↓← | Space Select | R Refresh | O Open | P Preview | F File | ⌫ Del %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, colorReset)
+		if m.largeFiltering {
+			fmt.Fprintf(&b, "%sType to filter  |  Enter Apply  |  Esc Clear  |  Ctrl+C Quit%s\n", colorGray, colorReset)
+		} else if m.largeFilter != "" {
+			fmt.Fprintf(&b, "%s↑↓← | Space Select | / Edit | Esc Clear filter | O Open | P Preview | F File | ⌫ Del | Q Quit%s\n", colorGray, colorReset)
 		} else {
-			fmt.Fprintf(&b, "%s↑↓← | Space Select | R Refresh | O Open | P Preview | F File | ⌫ Del | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
+			selectCount := len(m.largeMultiSelected)
+			if selectCount > 0 {
+				fmt.Fprintf(&b, "%s↑↓← | Space Select | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, colorReset)
+			} else {
+				fmt.Fprintf(&b, "%s↑↓← | Space Select | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
+			}
 		}
+	} else if m.entryFiltering {
+		fmt.Fprintf(&b, "%sType to filter  |  Enter Apply  |  Esc Clear  |  Ctrl+C Quit%s\n", colorGray, colorReset)
+	} else if m.entryFilter != "" {
+		fmt.Fprintf(&b, "%s↑↓←→ | Enter | Space Select | / Edit | Esc Clear filter | O Open | P Preview | F File | ⌫ Del | Q Quit%s\n", colorGray, colorReset)
 	} else {
 		largeFileCount := len(m.largeFiles)
 		selectCount := len(m.multiSelected)
 		if selectCount > 0 {
 			if largeFileCount > 0 {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | T Top %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, largeFileCount, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | T Top %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, largeFileCount, colorReset)
 			} else {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, colorReset)
 			}
 		} else {
 			if largeFileCount > 0 {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | R Refresh | O Open | P Preview | F File | ⌫ Del | T Top %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, largeFileCount, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del | T Top %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, largeFileCount, colorReset)
 			} else {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | R Refresh | O Open | P Preview | F File | ⌫ Del | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
 			}
 		}
 	}

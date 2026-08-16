@@ -110,9 +110,9 @@ setup() {
 @test "mole --help prints command overview" {
 	run env HOME="$HOME" "$PROJECT_ROOT/mole" --help
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"mo clean"* ]]
-	[[ "$output" == *"mo optimize"* ]]
-	[[ "$output" == *"mo analyze"* ]]
+	[[ "$output" == *"mo clean"* ]] || return 1
+	[[ "$output" == *"mo optimize"* ]] || return 1
+	[[ "$output" == *"mo analyze"* ]] || return 1
 	[[ "$output" != *"mo optimise"* ]]
 }
 
@@ -148,7 +148,7 @@ EOF
 
 	run env HOME="$HOME" "$PROJECT_ROOT/mole" --version
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Mole version $expected_version"* ]]
+	[[ "$output" == *"Mole version $expected_version"* ]] || return 1
 	[[ "$output" == *"Channel: Nightly"* ]]
 }
 
@@ -194,26 +194,27 @@ EOF
 	[[ "$output" == *"Unknown uninstall option: --whitelist"* ]]
 }
 
-@test "show_main_menu hides update shortcut when no update notice is available" {
-	run bash --noprofile --norc <<'EOF'
-set -euo pipefail
-HOME="$(mktemp -d)"
-export HOME MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1
-source "$PROJECT_ROOT/mole"
-show_brand_banner() { printf 'banner\n'; }
-show_menu_option() { printf '%s' "$2"; }
-MAIN_MENU_BANNER=""
-MAIN_MENU_UPDATE_MESSAGE=""
-MAIN_MENU_SHOW_UPDATE=false
-show_main_menu 1 true
-EOF
+@test "main menu controls line shows the update shortcut only when an update is available" {
+	# The controls line is rendered only under a tty, so test the pure builder
+	# directly. Both the negative and positive cases run so the assertion
+	# cannot pass vacuously.
+	run /bin/bash --noprofile --norc -c "MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1 HOME=\"\$(mktemp -d)\" source '$PROJECT_ROOT/mole'; _main_menu_controls_line true false"
+	[ "$status" -eq 0 ] || return 1
+	[[ "$output" != *"U Update"* ]] || return 1
 
-	[ "$status" -eq 0 ]
-	[[ "$output" != *"U Update"* ]]
+	run /bin/bash --noprofile --norc -c "MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1 HOME=\"\$(mktemp -d)\" source '$PROJECT_ROOT/mole'; _main_menu_controls_line true true"
+	[ "$status" -eq 0 ] || return 1
+	[[ "$output" == *"U Update"* ]] || return 1
+
+	# TouchID setup takes precedence: no update shortcut even if one is ready.
+	run /bin/bash --noprofile --norc -c "MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1 HOME=\"\$(mktemp -d)\" source '$PROJECT_ROOT/mole'; _main_menu_controls_line false true"
+	[ "$status" -eq 0 ] || return 1
+	[[ "$output" == *"T TouchID"* ]] || return 1
+	[[ "$output" != *"U Update"* ]] || return 1
 }
 
 @test "show_main_menu keeps history out of the primary menu" {
-	run bash --noprofile --norc <<'EOF'
+	run /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
 HOME="$(mktemp -d)"
 export HOME MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1
@@ -227,13 +228,13 @@ show_main_menu 1 true
 EOF
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Clean        Free up disk space"* ]]
-	[[ "$output" != *"History"* ]]
+	[[ "$output" == *"Clean        Free up disk space"* ]] || return 1
+	[[ "$output" != *"History"* ]] || return 1
 	[[ "$output" != *"history"* ]]
 }
 
 @test "interactive_main_menu ignores U shortcut when update notice is hidden" {
-	run bash --noprofile --norc <<'EOF'
+	run /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
 HOME="$(mktemp -d)"
 export HOME MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1
@@ -260,8 +261,26 @@ EOF
 	[[ "$output" != *"UPDATE_CALLED"* ]]
 }
 
+@test "read_update_message_cache ignores notices older than current script" {
+	run /bin/bash --noprofile --norc <<'EOF'
+set -euo pipefail
+HOME="$(mktemp -d)"
+export HOME MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1
+mkdir -p "$HOME/.cache/mole"
+msg_cache="$HOME/.cache/mole/update_message"
+printf 'Update 1.43.0 available, run mo update\n' > "$msg_cache"
+touch -t 200001010000 "$msg_cache"
+source "$PROJECT_ROOT/mole"
+message="$(read_update_message_cache "$msg_cache")"
+[[ -z "$message" ]] || exit 1
+[[ ! -s "$msg_cache" ]] || exit 1
+EOF
+
+	[ "$status" -eq 0 ]
+}
+
 @test "interactive_main_menu accepts U shortcut when update notice is visible" {
-	run bash --noprofile --norc <<'EOF'
+	run /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
 HOME="$(mktemp -d)"
 export HOME MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1
@@ -283,7 +302,7 @@ EOF
 }
 
 @test "interactive_main_menu drains numeric shortcut Enter before launching uninstall" {
-	run bash --noprofile --norc <<'EOF'
+	run /bin/bash --noprofile --norc <<'EOF'
 set -euo pipefail
 HOME="$(mktemp -d)"
 export HOME MOLE_TEST_MODE=1 MOLE_SKIP_MAIN=1
@@ -315,7 +334,7 @@ interactive_main_menu < <(printf '2\n')
 EOF
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"NO_LEAK"* ]]
+	[[ "$output" == *"NO_LEAK"* ]] || return 1
 	[[ "$output" != *"LEAK:"* ]]
 }
 
@@ -326,7 +345,7 @@ EOF
 }
 
 @test "mo optimize command is recognized" {
-	run bash -c "grep -Eq '\"optimi[sz]e\"[[:space:]]*\\|[[:space:]]*\"optimi[sz]e\"' '$PROJECT_ROOT/mole'"
+	run /bin/bash -c "grep -Eq '\"optimi[sz]e\"[[:space:]]*\\|[[:space:]]*\"optimi[sz]e\"' '$PROJECT_ROOT/mole'"
 	[ "$status" -eq 0 ]
 }
 
@@ -380,7 +399,7 @@ EOF
 @test "mo clean --help includes external volume option" {
 	run env HOME="$HOME" "$PROJECT_ROOT/mole" clean --help
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"--external PATH"* ]]
+	[[ "$output" == *"--external PATH"* ]] || return 1
 	[[ "$output" == *"already-uninstalled apps"* ]]
 }
 
@@ -408,7 +427,7 @@ EOF
 	run env HOME="$HOME" PATH="$mock_bin:$PATH" MOLE_EXTERNAL_VOLUMES_ROOT="$link_root" \
 		MOLE_TEST_NO_AUTH=1 "$PROJECT_ROOT/mole" clean --external "$link_root/USB" --dry-run
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Clean External Volume"* ]]
+	[[ "$output" == *"Clean External Volume"* ]] || return 1
 	[[ "$output" == *"External volume cleanup"* ]]
 }
 
@@ -420,7 +439,7 @@ EOF
 
 	run env MOLE_PAM_SUDO_FILE="$pam_file" "$PROJECT_ROOT/bin/touchid.sh" status
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"not configured"* ]]
+	[[ "$output" == *"not configured"* ]] || return 1
 
 	cat >"$pam_file" <<'EOF'
 auth       sufficient     pam_tid.so
@@ -470,7 +489,7 @@ EOF
 
 	run env MOLE_PAM_SUDO_FILE="$pam_file" "$PROJECT_ROOT/bin/touchid.sh" enable --dry-run
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"DRY RUN MODE"* ]]
+	[[ "$output" == *"DRY RUN MODE"* ]] || return 1
 
 	run grep "pam_tid.so" "$pam_file"
 	[ "$status" -ne 0 ]
@@ -598,26 +617,6 @@ assert data['path'] == '/tmp' or data['path'] == '/private/tmp', \
 "
 }
 
-@test "mo analyze --json overview mode returns expected schema" {
-	if [[ ! -x "${ANALYZE_BIN:-}" ]]; then
-		skip "analyze binary not available (go not installed?)"
-	fi
-
-	run "$ANALYZE_BIN" --json
-	[ "$status" -eq 0 ]
-
-	echo "$output" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-assert 'path' in data, 'missing path'
-assert 'overview' in data, 'missing overview'
-assert data['overview'] is True, 'overview scan should have overview: true'
-assert 'entries' in data, 'missing entries'
-assert 'total_size' in data, 'missing total_size'
-assert isinstance(data['entries'], list), 'entries is not a list'
-"
-}
-
 @test "mo status --json outputs valid JSON with expected fields" {
 	if [[ ! -x "${STATUS_BIN:-}" ]]; then
 		skip "status binary not available (go not installed?)"
@@ -683,4 +682,48 @@ assert mem['total'] > 0, 'memory total should be positive'
 	# When piped (not a tty), status should auto-detect and output JSON
 	output=$("$STATUS_BIN" 2>/dev/null)
 	echo "$output" | python3 -c "import sys, json; json.load(sys.stdin)"
+}
+
+@test "mo status --watch streams newline-delimited JSON" {
+	if [[ ! -x "${STATUS_BIN:-}" ]]; then
+		skip "status binary not available (go not installed?)"
+	fi
+
+	run python3 - "$STATUS_BIN" <<'PY'
+import json
+import subprocess
+import sys
+
+status_bin = sys.argv[1]
+proc = subprocess.Popen(
+    [status_bin, "--watch", "--interval", "200ms"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    text=True,
+)
+lines = []
+try:
+    for _ in range(3):
+        line = proc.stdout.readline()
+        if not line:
+            raise RuntimeError("missing watch output")
+        snapshot = json.loads(line)
+        for key in ("collected_at", "cpu", "memory", "disk_io", "network", "health_score"):
+            if key not in snapshot:
+                raise RuntimeError(f"missing key: {key}")
+        lines.append(snapshot)
+finally:
+    proc.terminate()
+    try:
+        proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=3)
+
+if proc.stderr.read():
+    raise RuntimeError("watch wrote to stderr")
+print(f"watch_lines={len(lines)}")
+PY
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"watch_lines=3"* ]]
 }

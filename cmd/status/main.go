@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -26,6 +25,10 @@ var (
 	procCPUThreshold = flag.Float64("proc-cpu-threshold", 100, "alert when a process stays above this CPU percent")
 	procCPUWindow    = flag.Duration("proc-cpu-window", 5*time.Minute, "continuous duration a process must exceed the CPU threshold")
 	procCPUAlerts    = flag.Bool("proc-cpu-alerts", true, "enable persistent high-CPU process alerts")
+
+	// Watch mode: stream NDJSON (one snapshot per line) from a single warm collector.
+	watchMode     = flag.Bool("watch", false, "stream metrics continuously as newline-delimited JSON instead of the one-shot TUI/JSON")
+	watchInterval = flag.String("interval", "", "with --watch, collection interval (e.g. 1s, 2s); defaults to 1s")
 )
 
 func shouldUseJSONOutput(forceJSON bool, stdout *os.File) bool {
@@ -72,6 +75,7 @@ type model struct {
 	collecting    bool
 	animFrame     int
 	catHidden     bool // true = hidden, false = visible
+	cpuCores      int  // how many CPU cores to list; 0 = all
 }
 
 // padViewToHeight ensures the rendered frame always overwrites the full
@@ -89,50 +93,11 @@ func padViewToHeight(view string, height int) string {
 	return view + strings.Repeat("\n", height-contentHeight)
 }
 
-// getConfigPath returns the path to the status preferences file.
-func getConfigPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".config", "mole", "status_prefs")
-}
-
-// loadCatHidden loads the cat hidden preference from config file.
-func loadCatHidden() bool {
-	path := getConfigPath()
-	if path == "" {
-		return false
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return false
-	}
-	return strings.TrimSpace(string(data)) == "cat_hidden=true"
-}
-
-// saveCatHidden saves the cat hidden preference to config file.
-func saveCatHidden(hidden bool) {
-	path := getConfigPath()
-	if path == "" {
-		return
-	}
-	// Ensure directory exists
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return
-	}
-	value := "cat_hidden=false"
-	if hidden {
-		value = "cat_hidden=true"
-	}
-	_ = os.WriteFile(path, []byte(value+"\n"), 0644)
-}
-
 func newModel() model {
 	return model{
 		collector: NewCollector(processWatchOptionsFromFlags()),
 		catHidden: loadCatHidden(),
+		cpuCores:  loadCPUCores(),
 	}
 }
 
@@ -169,6 +134,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.catHidden = !m.catHidden
 			saveCatHidden(m.catHidden)
 			return m, nil
+		case "c":
+			// Cycle how many CPU cores the card lists (2 → 4 → 8 → all) and persist.
+			m.cpuCores = nextCPUCores(m.cpuCores)
+			saveCPUCores(m.cpuCores)
+			return m, nil
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -189,11 +159,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.metrics = msg.data
 		m.lastUpdated = msg.data.CollectedAt
-		if msg.mode == collectionFull && msg.err == nil {
-			m.lastFullAt = msg.data.CollectedAt
-		}
-		if (msg.mode == collectionProcess || msg.mode == collectionFull) && msg.err == nil {
-			m.lastProcessAt = msg.data.CollectedAt
+		if msg.err == nil {
+			recordCollectionFreshness(msg.mode, msg.data.CollectedAt, &m.lastFullAt, &m.lastProcessAt)
 		}
 		m.collecting = false
 		// Mark ready after first successful data collection.
@@ -225,52 +192,78 @@ func (m model) View() string {
 	header, mole := renderHeader(m.metrics, m.errMessage, m.animFrame, termWidth, m.catHidden)
 	alertBar := renderProcessAlertBar(m.metrics.ProcessAlerts, termWidth)
 
-	var cardContent string
-	if termWidth <= 80 {
-		cardWidth := termWidth
-		if cardWidth > 2 {
-			cardWidth -= 2
-		}
-		cards := buildCards(m.metrics, cardWidth)
-
-		var rendered []string
-		for i, c := range cards {
-			if i > 0 {
-				rendered = append(rendered, "")
+	renderFrame := func(cpuCores int) string {
+		var cardContent string
+		if termWidth <= 80 {
+			cardWidth := termWidth
+			if cardWidth > 2 {
+				cardWidth -= 2
 			}
-			rendered = append(rendered, renderCard(c, cardWidth, 0))
+			cards := buildCards(m.metrics, cardWidth, cpuCores, !m.lastFullAt.IsZero())
+
+			var rendered []string
+			for i, c := range cards {
+				if i > 0 {
+					rendered = append(rendered, "")
+				}
+				rendered = append(rendered, renderCard(c, cardWidth))
+			}
+			cardContent = lipgloss.JoinVertical(lipgloss.Left, rendered...)
+		} else {
+			cardWidth := max(24, termWidth/2-4)
+			cards := buildCards(m.metrics, cardWidth, cpuCores, !m.lastFullAt.IsZero())
+			cardContent = renderTwoColumns(cards, termWidth)
 		}
-		cardContent = lipgloss.JoinVertical(lipgloss.Left, rendered...)
-	} else {
-		cardWidth := max(24, termWidth/2-4)
-		cards := buildCards(m.metrics, cardWidth)
-		cardContent = renderTwoColumns(cards, termWidth)
+
+		// Combine header, mole, and cards with consistent spacing
+		parts := []string{header}
+		if alertBar != "" {
+			parts = append(parts, alertBar)
+		}
+		if mole != "" {
+			parts = append(parts, mole)
+		}
+		parts = append(parts, cardContent)
+		return lipgloss.JoinVertical(lipgloss.Left, parts...)
 	}
 
-	// Combine header, mole, and cards with consistent spacing
-	parts := []string{header}
-	if alertBar != "" {
-		parts = append(parts, alertBar)
+	// Every extra core is another card row, and the frame has no scrollback: on
+	// a 20-core Mac "all" adds ~18 lines and pushes the lower cards off a short
+	// window. Step the preference back down until the frame fits; the stored
+	// preference is untouched, so a taller window gets it back.
+	cpuCores := m.cpuCores
+	output := renderFrame(cpuCores)
+	for m.height > 0 && lipgloss.Height(output) > m.height && cpuCores != cpuCoresCycle[0] {
+		cpuCores = smallerCPUCores(cpuCores)
+		output = renderFrame(cpuCores)
 	}
-	if mole != "" {
-		parts = append(parts, mole)
-	}
-	parts = append(parts, cardContent)
-	output := lipgloss.JoinVertical(lipgloss.Left, parts...)
 	return padViewToHeight(output, m.height)
 }
 
 func (m model) nextCollectionMode(now time.Time) collectionMode {
-	if !m.ready {
+	return nextCollectionMode(m.ready, m.lastFullAt, m.lastProcessAt, now)
+}
+
+func nextCollectionMode(ready bool, lastFullAt, lastProcessAt, now time.Time) collectionMode {
+	if !ready {
 		return collectionFast
 	}
-	if m.lastFullAt.IsZero() || now.Sub(m.lastFullAt) >= slowRefreshInterval {
+	if lastFullAt.IsZero() || now.Sub(lastFullAt) >= slowRefreshInterval {
 		return collectionFull
 	}
-	if m.lastProcessAt.IsZero() || now.Sub(m.lastProcessAt) >= processWatchInterval {
+	if lastProcessAt.IsZero() || now.Sub(lastProcessAt) >= processWatchInterval {
 		return collectionProcess
 	}
 	return collectionFast
+}
+
+func recordCollectionFreshness(mode collectionMode, collectedAt time.Time, lastFullAt, lastProcessAt *time.Time) {
+	if mode == collectionFull {
+		*lastFullAt = collectedAt
+	}
+	if mode == collectionProcess || mode == collectionFull {
+		*lastProcessAt = collectedAt
+	}
 }
 
 func (m model) collectCmd(mode collectionMode) tea.Cmd {
@@ -332,11 +325,36 @@ func runTUIMode() {
 	}
 }
 
+func parseWatchInterval(raw string) (time.Duration, error) {
+	if raw == "" {
+		return refreshInterval, nil
+	}
+
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid --interval %q (want e.g. 1s, 2s): %w", raw, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("invalid --interval %q (must be > 0)", raw)
+	}
+	return d, nil
+}
+
 func main() {
 	flag.Parse()
 	if err := validateFlags(); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(2)
+	}
+
+	if *watchMode {
+		interval, err := parseWatchInterval(*watchInterval)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(2)
+		}
+		runWatchMode(interval)
+		return
 	}
 
 	if shouldUseJSONOutput(*jsonOutput, os.Stdout) {

@@ -13,19 +13,27 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 jobs:
   audit:
     name: Bundle drift
     runs-on: macos-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run drift audit
         id: drift
         continue-on-error: true
         run: |
+          # pipefail so the audit's exit 2 (drift found) propagates through
+          # tee. Without it the step's status is tee's 0, outcome stays
+          # 'success', and the "Open issue on drift" gate below never fires.
+          set -o pipefail
           ./scripts/audit_bundle_drift.sh | tee /tmp/audit.txt
-          echo "rc=$?" >> "$GITHUB_OUTPUT"
 
       - name: Open issue on drift
         if: ${{ steps.drift.outcome != 'success' }}

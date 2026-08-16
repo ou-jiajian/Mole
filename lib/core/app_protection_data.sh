@@ -63,6 +63,42 @@ readonly SYSTEM_CRITICAL_BUNDLES=(
     "com.apple.RAIDUtility"
     "com.apple.BootCampAssistant"
 
+    # /System/Applications additions surfaced by the 2026-08 bundle drift
+    # audit on macOS 26. IDs are matched case-sensitively, so the lowercase
+    # variants below are the exact values those bundles report.
+    "com.apple.apps.launcher"
+    "com.apple.backup.launcher"
+    "com.apple.bootcampassistant"
+    "com.apple.Chess"
+    "com.apple.clock"
+    "com.apple.FaceTime"
+    "com.apple.findmy"
+    "com.apple.freeform"
+    "com.apple.games"
+    "com.apple.GenerativePlaygroundApp"
+    "com.apple.helpviewer"
+    "com.apple.Home"
+    "com.apple.Image_Capture"
+    "com.apple.journal"
+    "com.apple.Magnifier"
+    "com.apple.Maps"
+    "com.apple.mobilephone"
+    "com.apple.MobileSMS"
+    "com.apple.news"
+    "com.apple.Passwords"
+    "com.apple.PhotoBooth"
+    "com.apple.printcenter"
+    "com.apple.QuickTimePlayerX"
+    "com.apple.ScreenContinuity"
+    "com.apple.screenshot.launcher"
+    "com.apple.shortcuts"
+    "com.apple.siri.launcher"
+    "com.apple.Stickies"
+    "com.apple.stocks"
+    "com.apple.TV"
+    "com.apple.VoiceMemos"
+    "com.apple.weather"
+
     # System services and daemons
     "com.apple.SecurityAgent"
     "com.apple.CoreServices*"
@@ -121,7 +157,6 @@ readonly SYSTEM_CRITICAL_BUNDLES=(
     "KeyLayout*"
     "GlobalPreferences"
     ".GlobalPreferences"
-    "org.pqrs.Karabiner*"
 )
 
 # Apple apps that CAN be uninstalled (from App Store or developer.apple.com)
@@ -148,6 +183,24 @@ readonly OFFICIAL_UNINSTALLER_RULES=(
     "SentinelOne|com.sentinelone.,com.sentinel-labs.|sentinelone,sentinel agent"
     "GlobalProtect|com.paloaltonetworks.|globalprotect"
     "Cisco|com.cisco.anyconnect,com.cisco.secureclient|cisco secure client,cisco anyconnect"
+)
+
+# Endpoint-security / EDR / MDM agent bundle-id prefixes. Their per-user Darwin
+# caches under /private/var/folders must never be deleted: removing anything
+# inside a sensor's container trips tamper detection (e.g. CrowdStrike
+# "MacFalconSensorTamper", MITRE T1562.001) that corporate security reports as
+# malware. Keep in sync with the vendors in OFFICIAL_UNINSTALLER_RULES above.
+# Consumed by is_endpoint_security_cache_path() in app_protection.sh.
+readonly ENDPOINT_SECURITY_BUNDLE_PREFIXES=(
+    "com.crowdstrike."
+    "com.sentinelone."
+    "com.sentinel-labs."
+    "com.eset."
+    "com.jamf."
+    "com.jamfsoftware."
+    "com.paloaltonetworks."
+    "com.cisco.anyconnect"
+    "com.cisco.secureclient"
 )
 
 # Applications with sensitive data; protected during cleanup but removable
@@ -378,6 +431,7 @@ readonly DATA_PROTECTED_BUNDLES=(
     # Launcher & Automation
     "com.runningwithcrayons.Alfred"
     "com.raycast.*"
+    "com.raycast-x.*"
     "com.blacktree.Quicksilver"
     "com.stairways.keyboardmaestro.*"
     "com.manytricks.Butler"

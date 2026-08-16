@@ -94,7 +94,7 @@ fi
 # Auto-install mode when run without arguments
 if [[ $# -eq 0 ]]; then
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}，不会修改 shell 配置文件"
+        echo -e "${YELLOW}${ICON_DRY_RUN} DRY RUN MODE${NC}, shell config files will not be modified"
         echo ""
     fi
 
@@ -193,7 +193,7 @@ if [[ $# -eq 0 ]]; then
             completion_line='if output="$('"$completion_name"' completion zsh 2>/dev/null)"; then eval "$output"; fi'
             ;;
         *)
-            log_error "不支持的 shell：$current_shell"
+            log_error "Unsupported shell: $current_shell"
             echo "  mole completion <bash|zsh|fish>"
             exit 1
             ;;
@@ -202,7 +202,7 @@ if [[ $# -eq 0 ]]; then
     if [[ -z "$completion_name" ]]; then
         if [[ -f "$config_file" ]] && grep -Eq "(^# Mole shell completion$|(mole|mo)[[:space:]]+completion)" "$config_file" 2> /dev/null; then
             if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-                echo -e "${GRAY}${ICON_REVIEW} [DRY RUN] 将从 $config_file 中移除过时的补全配置${NC}"
+                echo -e "${GRAY}${ICON_REVIEW} [DRY RUN] Would remove stale completion entries from $config_file${NC}"
                 echo ""
             else
                 original_mode=""
@@ -213,18 +213,18 @@ if [[ $# -eq 0 ]]; then
                 if [[ -n "$original_mode" ]]; then
                     chmod "$original_mode" "$config_file" 2> /dev/null || true
                 fi
-                echo -e "${GREEN}${ICON_SUCCESS}${NC} 已从 $config_file 中移除过时的补全配置"
+                echo -e "${GREEN}${ICON_SUCCESS}${NC} Removed stale completion entries from $config_file"
                 echo ""
             fi
         fi
-        log_error "未在 PATH 中找到 mole，请先安装 Mole 再启用命令补全"
+        log_error "mole not found in PATH, install Mole before enabling completion"
         exit 1
     fi
 
     # Check if already installed and normalize to latest line
     if [[ -f "$config_file" ]] && grep -Eq "(mole|mo)[[:space:]]+completion" "$config_file" 2> /dev/null; then
         if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-            echo -e "${GRAY}${ICON_REVIEW} [DRY RUN] 将规范化 $config_file 中的补全配置${NC}"
+            echo -e "${GRAY}${ICON_REVIEW} [DRY RUN] Would normalize completion entry in $config_file${NC}"
             echo ""
             exit 0
         fi
@@ -239,38 +239,38 @@ if [[ $# -eq 0 ]]; then
         fi
         {
             echo ""
-            echo "# Mole shell 补全"
+            echo "# Mole shell completion"
             echo "$completion_line"
         } >> "$config_file"
         echo ""
-        echo -e "${GREEN}${ICON_SUCCESS}${NC} Shell 补全已在 $config_file 中更新"
+        echo -e "${GREEN}${ICON_SUCCESS}${NC} Shell completion updated in $config_file"
         echo ""
         exit 0
     fi
 
     # Prompt user for installation
     echo ""
-    echo -e "${GRAY}将添加到 ${config_file}:${NC}"
+    echo -e "${GRAY}Will add to ${config_file}:${NC}"
     echo "  $completion_line"
     echo ""
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "${GREEN}${ICON_SUCCESS}${NC} 预览完成，未做任何更改"
+        echo -e "${GREEN}${ICON_SUCCESS}${NC} Dry run complete, no changes made"
         exit 0
     fi
 
-    echo -ne "${PURPLE}${ICON_ARROW}${NC} 为 ${GREEN}${current_shell}${NC} 启用补全？ ${GRAY}回车 确认 / Q 取消${NC}: "
+    echo -ne "${PURPLE}${ICON_ARROW}${NC} Enable completion for ${GREEN}${current_shell}${NC}? ${GRAY}Enter confirm / Q cancel${NC}: "
     IFS= read -r -s -n1 key || key=""
     drain_pending_input
     echo ""
 
     case "$key" in
         $'\e' | [Qq] | [Nn])
-            echo -e "${YELLOW}已取消${NC}"
+            echo -e "${YELLOW}Cancelled${NC}"
             exit 0
             ;;
         "" | $'\n' | $'\r' | [Yy]) ;;
         *)
-            log_error "无效的按键"
+            log_error "Invalid key"
             exit 1
             ;;
     esac
@@ -296,14 +296,14 @@ if [[ $# -eq 0 ]]; then
     # Add completion line
     {
         echo ""
-        echo "# Mole shell 补全"
+        echo "# Mole shell completion"
         echo "$completion_line"
     } >> "$config_file"
 
-    echo -e "${GREEN}${ICON_SUCCESS}${NC} 补全已添加到 $config_file"
+    echo -e "${GREEN}${ICON_SUCCESS}${NC} Completion added to $config_file"
     echo ""
     echo ""
-    echo -e "${GRAY}现在激活：${NC}"
+    echo -e "${GRAY}To activate now:${NC}"
     echo -e "  ${GREEN}source $config_file${NC}"
     exit 0
 fi
@@ -430,30 +430,30 @@ EOF
         ;;
     *)
         cat << 'EOF'
-用法: mole completion [bash|zsh|fish]
+Usage: mole completion [bash|zsh|fish]
 
-为 mole 和 mo 命令设置 Shell 命令补全。
+Setup shell tab completion for mole and mo commands.
 
-自动安装:
-  mole completion              # 自动检测 shell 并安装
-  mole completion --dry-run   # 预览配置更改，不写入文件
+Auto-install:
+  mole completion              # Auto-detect shell and install
+  mole completion --dry-run    # Preview config changes without writing files
 
-手动安装:
-  mole completion bash         # 生成 bash 补全脚本
-  mole completion zsh          # 生成 zsh 补全脚本
-  mole completion fish         # 生成 fish 补全脚本
+Manual install:
+  mole completion bash         # Generate bash completion script
+  mole completion zsh          # Generate zsh completion script
+  mole completion fish         # Generate fish completion script
 
-示例:
-  # 自动安装（推荐）
+Examples:
+  # Auto-install (recommended)
   mole completion
 
-  # 手动安装 - Bash
+  # Manual install - Bash
   eval "$(mole completion bash)"
 
-  # 手动安装 - Zsh
+  # Manual install - Zsh
   eval "$(mole completion zsh)"
 
-  # 手动安装 - Fish
+  # Manual install - Fish
   mole completion fish | source
 EOF
         exit 1

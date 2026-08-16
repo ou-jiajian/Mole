@@ -62,38 +62,46 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 	cpuPenalty := 0.0
 	if cpu.Usage > cpuNormalThreshold {
 		if cpu.Usage > cpuHighThreshold {
-			cpuPenalty = healthCPUWeight * (cpu.Usage - cpuNormalThreshold) / cpuHighThreshold
+			// Scale across the remaining range up to 100% so the penalty keeps
+			// growing with usage (matches the disk branch). Dividing by the raw
+			// high threshold instead made the penalty drop past 85%, letting the
+			// score rise as CPU load got worse.
+			cpuPenalty = healthCPUWeight * (cpu.Usage - cpuNormalThreshold) / (100 - cpuNormalThreshold)
 		} else {
 			cpuPenalty = (healthCPUWeight / 2) * (cpu.Usage - cpuNormalThreshold) / (cpuHighThreshold - cpuNormalThreshold)
 		}
 	}
 	score -= cpuPenalty
 	if cpu.Usage > cpuHighThreshold {
-		issues = append(issues, "CPU 负载高")
+		issues = append(issues, "High CPU")
 	}
 
 	// Memory penalty.
 	memPenalty := 0.0
 	if mem.UsedPercent > memNormalThreshold {
 		if mem.UsedPercent > memHighThreshold {
-			memPenalty = healthMemWeight * (mem.UsedPercent - memNormalThreshold) / memNormalThreshold
+			// Scale across the remaining range up to 100% so the penalty keeps
+			// growing with usage (matches the disk branch). Dividing by the raw
+			// normal threshold instead made the penalty drop past 88%, letting
+			// the score rise as memory pressure got worse.
+			memPenalty = healthMemWeight * (mem.UsedPercent - memNormalThreshold) / (100 - memNormalThreshold)
 		} else {
 			memPenalty = (healthMemWeight / 2) * (mem.UsedPercent - memNormalThreshold) / (memHighThreshold - memNormalThreshold)
 		}
 	}
 	score -= memPenalty
 	if mem.UsedPercent > memHighThreshold {
-		issues = append(issues, "内存占用高")
+		issues = append(issues, "High Memory")
 	}
 
 	// Memory pressure penalty.
 	switch mem.Pressure {
 	case "warn":
 		score -= memPressureWarnPenalty
-		issues = append(issues, "内存压力")
+		issues = append(issues, "Memory Pressure")
 	case "critical":
 		score -= memPressureCritPenalty
-		issues = append(issues, "内存严重不足")
+		issues = append(issues, "Critical Memory")
 	}
 
 	// Disk penalty.
@@ -109,7 +117,16 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 		}
 		score -= diskPenalty
 		if diskUsage > diskCritThreshold {
-			issues = append(issues, "磁盘空间不足")
+			issues = append(issues, "Disk Almost Full")
+		}
+	}
+	for _, disk := range disks {
+		if disk.SmartStatus == smartStatusFailing {
+			if score > 44 {
+				score = 44
+			}
+			issues = append(issues, "Disk SMART Failing")
+			break
 		}
 	}
 
@@ -119,7 +136,7 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 		if thermal.CPUTemp > thermalNormalThreshold {
 			if thermal.CPUTemp > thermalHighThreshold {
 				thermalPenalty = healthThermalWeight
-				issues = append(issues, "温度过高")
+				issues = append(issues, "Overheating")
 			} else {
 				thermalPenalty = healthThermalWeight * (thermal.CPUTemp - thermalNormalThreshold) / (thermalHighThreshold - thermalNormalThreshold)
 			}
@@ -133,7 +150,7 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 	if totalIO > ioNormalThreshold {
 		if totalIO > ioHighThreshold {
 			ioPenalty = healthIOWeight
-			issues = append(issues, "磁盘IO繁忙")
+			issues = append(issues, "Heavy Disk IO")
 		} else {
 			ioPenalty = healthIOWeight * (totalIO - ioNormalThreshold) / (ioHighThreshold - ioNormalThreshold)
 		}
@@ -173,13 +190,13 @@ func calculateHealthScore(cpu CPUStatus, mem MemoryStatus, disks []DiskStatus, d
 	var msg string
 	switch {
 	case score >= scoreExcellentThreshold:
-		msg = "优秀"
+		msg = "Excellent"
 	case score >= scoreGoodThreshold:
-		msg = "良好"
+		msg = "Good"
 	case score >= scoreFairThreshold:
-		msg = "一般"
+		msg = "Fair"
 	default:
-		msg = "需要关注"
+		msg = "Needs Attention"
 	}
 
 	if len(issues) > 0 {
