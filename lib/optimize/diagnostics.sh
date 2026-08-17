@@ -115,8 +115,8 @@ opt_diag_family_label() {
         cloudshell) printf '%s\n' "CloudShell / AliEntSafe" ;;
         syspolicyd) printf '%s\n' "syspolicyd" ;;
         windowserver) printf '%s\n' "WindowServer" ;;
-        spotlight) printf '%s\n' "Spotlight indexing" ;;
-        coresim_disk_images) printf '%s\n' "CoreSimulator disk images" ;;
+        spotlight) printf '%s\n' "Spotlight 索引" ;;
+        coresim_disk_images) printf '%s\n' "CoreSimulator 磁盘映像" ;;
         *) printf '%s\n' "$1" ;;
     esac
 }
@@ -124,19 +124,19 @@ opt_diag_family_label() {
 opt_diag_family_note() {
     case "$1" in
         cloudshell)
-            printf '%s\n' "External enterprise agent pressure detected. Mole will not terminate enterprise security processes; restart or policy checks must happen outside Mole."
+            printf '%s\n' "检测到外部企业安全代理的压力。Mole 不会终止企业安全进程；重启或策略检查必须在 Mole 之外进行。"
             ;;
         syspolicyd)
-            printf '%s\n' "Gatekeeper and code-signature assessment activity is elevated."
+            printf '%s\n' "Gatekeeper 与代码签名评估活动偏高。"
             ;;
         windowserver)
-            printf '%s\n' "Desktop composition is busy. When another family is higher, treat this as a likely symptom rather than the root cause."
+            printf '%s\n' "桌面合成繁忙。当其他类别占用更高时，应将其视为可能的症状而非根本原因。"
             ;;
         spotlight)
-            printf '%s\n' "Metadata indexing or import work is consuming CPU."
+            printf '%s\n' "元数据索引或导入工作正在占用 CPU。"
             ;;
         coresim_disk_images)
-            printf '%s\n' "Simulator runtime disk-image services are active."
+            printf '%s\n' "模拟器运行时磁盘映像服务处于活动状态。"
             ;;
         *)
             printf '%s\n' ""
@@ -291,18 +291,18 @@ opt_diag_detach_candidates() {
         safe_mount_path=$(mole_terminal_safe_text "$mount_path")
         if run_with_timeout 15 hdiutil detach "$mount_path" > /dev/null 2>&1; then # 15s: hdiutil detach, see lib/core/timeouts.sh
             detached=$((detached + 1))
-            printf '  %b Detached %s\n' "${GREEN}${ICON_SUCCESS}${NC}" "$safe_mount_path"
+            printf '  %b 已卸载 %s\n' "${GREEN}${ICON_SUCCESS}${NC}" "$safe_mount_path"
         else
             failed=$((failed + 1))
-            printf '  %b Failed to detach %s\n' "${YELLOW}${ICON_WARNING}${NC}" "$safe_mount_path"
+            printf '  %b 无法卸载 %s\n' "${YELLOW}${ICON_WARNING}${NC}" "$safe_mount_path"
         fi
     done <<< "$candidates"
 
     if [[ $detached -gt 1 ]]; then
-        echo -e "  ${GRAY}${ICON_REVIEW}${NC} Detached ${detached} mounted images"
+        echo -e "  ${GRAY}${ICON_REVIEW}${NC} 已卸载 ${detached} 个已挂载映像"
     fi
     if [[ $failed -gt 1 ]]; then
-        echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${failed} mounted images still need manual review"
+        echo -e "  ${GRAY}${ICON_REVIEW}${NC} ${failed} 个已挂载映像仍需人工检查"
     fi
 }
 
@@ -318,9 +318,9 @@ opt_diag_offer_detach_candidates() {
     done <<< "$candidates"
 
     if [[ "$count" -eq 1 ]]; then
-        echo -e "  ${GRAY}${ICON_LIST}${NC} Mounted image adds assessment overhead:"
+        echo -e "  ${GRAY}${ICON_LIST}${NC} 已挂载的映像会增加评估开销："
     else
-        echo -e "  ${GRAY}${ICON_LIST}${NC} Mounted images add assessment overhead:"
+        echo -e "  ${GRAY}${ICON_LIST}${NC} 已挂载的映像会增加评估开销："
     fi
     while IFS=$'\t' read -r image_path mount_path; do
         [[ -z "$mount_path" ]] && continue
@@ -331,19 +331,19 @@ opt_diag_offer_detach_candidates() {
     done <<< "$candidates"
 
     if [[ "${MOLE_DRY_RUN:-0}" == "1" ]]; then
-        echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} Would offer detach for ${count} mounted image(s)"
+        echo -e "  ${YELLOW}${ICON_DRY_RUN}${NC} 将提示卸载 ${count} 个已挂载映像"
         return 0
     fi
 
     if [[ ! -t 1 ]]; then
-        echo -e "  ${GRAY}${ICON_REVIEW}${NC} Review these mounted images and detach any you no longer need"
+        echo -e "  ${GRAY}${ICON_REVIEW}${NC} 请检查这些已挂载映像，并卸载不再需要的映像"
         return 0
     fi
 
-    echo -ne "  ${GRAY}${ICON_REVIEW}${NC} ${YELLOW}Detach now?${NC} ${GRAY}Enter confirm / Space cancel${NC}: "
+    echo -ne "  ${GRAY}${ICON_REVIEW}${NC} ${YELLOW}立即卸载？${NC} ${GRAY}回车确认 / 空格取消${NC}: "
     local key=""
     if ! key=$(read_key); then
-        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Kept mounted, whitelist via ${NC}mo optimize --whitelist${GRAY}${NC}"
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} 已保持挂载，可通过 ${NC}mo optimize --whitelist${GRAY}${NC} 加入白名单"
         return 0
     fi
 
@@ -351,7 +351,7 @@ opt_diag_offer_detach_candidates() {
         echo ""
         opt_diag_detach_candidates "$candidates"
     else
-        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} Kept mounted, whitelist via ${NC}mo optimize --whitelist${GRAY}${NC}"
+        echo -e "\n  ${GRAY}${ICON_WARNING}${NC} 已保持挂载，可通过 ${NC}mo optimize --whitelist${GRAY}${NC} 加入白名单"
     fi
 }
 
@@ -368,7 +368,7 @@ run_optimize_diagnostics() {
     threshold=$(opt_diag_cpu_threshold)
 
     echo ""
-    echo -e "${BLUE}PERFORMANCE DIAGNOSIS${NC}"
+    echo -e "${BLUE}性能诊断${NC}"
 
     local families="cloudshell syspolicyd windowserver spotlight coresim_disk_images"
     local sustained_count=0
@@ -393,14 +393,14 @@ run_optimize_diagnostics() {
     done
 
     if [[ -z "$primary_family" ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} No sustained high-CPU bottleneck detected"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 未检测到持续的高 CPU 占用瓶颈"
     else
         label=$(opt_diag_family_label "$primary_family")
-        echo -e "  ${YELLOW}${ICON_WARNING}${NC} Likely bottleneck: ${label} (~${primary_avg}% CPU sustained)"
+        echo -e "  ${YELLOW}${ICON_WARNING}${NC} 疑似瓶颈：${label}（持续约 ${primary_avg}% CPU）"
         echo -e "  ${GRAY}${ICON_REVIEW}${NC} $(opt_diag_family_note "$primary_family")"
 
         if [[ $sustained_count -gt 1 ]]; then
-            echo -e "  ${GRAY}${ICON_LIST}${NC} Additional sustained pressure:"
+            echo -e "  ${GRAY}${ICON_LIST}${NC} 其他持续压力："
             while IFS=$'\t' read -r family avg label; do
                 [[ -z "$family" || "$family" == "$primary_family" ]] && continue
                 echo -e "    ${GRAY}${label}${NC} ~${avg}%"
@@ -423,10 +423,10 @@ run_optimize_diagnostics() {
         detach_count=$(printf '%s\n' "$detach_candidates" | awk 'NF { count++ } END { print count + 0 }')
 
         if [[ -n "$spctl_status" ]]; then
-            echo -e "  ${GRAY}${ICON_LIST}${NC} Gatekeeper status: ${spctl_status}"
+            echo -e "  ${GRAY}${ICON_LIST}${NC} Gatekeeper 状态：${spctl_status}"
         fi
         if [[ "$managed_count" -gt 0 && "$managed_count" == "$coresim_count" && "$detach_count" -eq 0 ]]; then
-            echo -e "  ${GRAY}${ICON_INFO}${NC} Only system-managed CoreSimulator images are mounted, informational only, not a detach target"
+            echo -e "  ${GRAY}${ICON_INFO}${NC} 仅挂载了系统管理的 CoreSimulator 映像，仅供参考，不是卸载目标"
         fi
 
         opt_diag_offer_detach_candidates "$detach_candidates"

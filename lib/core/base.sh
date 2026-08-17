@@ -1109,7 +1109,7 @@ mktemp_file() {
     local error_msg
     # Add .XXXXXX suffix to work with both BSD and GNU mktemp
     if ! error_msg=$(mktemp "$(mole_temp_path_template "$prefix")" 2>&1); then
-        echo "Error: Failed to create temporary file: $error_msg" >&2
+        echo "错误：无法创建临时文件：$error_msg" >&2
         return 1
     fi
     temp="$error_msg"
@@ -1199,7 +1199,7 @@ start_section() {
 # Shows "Nothing to tidy" if no activity was recorded
 end_section() {
     if [[ "${TRACK_SECTION:-0}" == "1" && "${SECTION_ACTIVITY:-0}" == "0" ]]; then
-        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Nothing to tidy"
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} 无需整理"
     fi
     TRACK_SECTION=0
 }
@@ -1216,7 +1216,7 @@ note_activity() {
 # stop/start cycle blanks the line for a frame and reads as flicker.
 # Usage: start_section_spinner "message"
 start_section_spinner() {
-    local message="${1:-Scanning...}"
+    local message="${1:-正在扫描…}"
     if [[ -t 1 ]]; then
         if declare -F update_inline_spinner_message > /dev/null 2>&1 &&
             update_inline_spinner_message "$message"; then

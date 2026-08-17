@@ -23,30 +23,30 @@ func (m model) View() string {
 	if m.inOverviewMode() {
 		freeLabel := ""
 		if m.diskFree > 0 {
-			freeLabel = fmt.Sprintf("  %s(%s free)%s", colorGray, humanizeBytes(m.diskFree), colorReset)
+			freeLabel = fmt.Sprintf("  %s（%s 可用）%s", colorGray, humanizeBytes(m.diskFree), colorReset)
 		}
-		fmt.Fprintf(&b, "%sAnalyze Disk%s%s\n", colorPurpleBold, colorReset, freeLabel)
+		fmt.Fprintf(&b, "%s分析磁盘%s%s\n", colorPurpleBold, colorReset, freeLabel)
 		if m.overviewScanning {
 			if allOverviewEntriesPending(m.entries) {
-				fmt.Fprintf(&b, "%sSelect a location to explore:%s  ", colorGray, colorReset)
-				fmt.Fprintf(&b, "%s%s%s%s Analyzing disk usage...\n\n",
+				fmt.Fprintf(&b, "%s选择要探索的位置：%s  ", colorGray, colorReset)
+				fmt.Fprintf(&b, "%s%s%s%s 正在分析磁盘占用…\n\n",
 					colorCyan, colorBold, spinnerFrames[m.spinner], colorReset)
 			} else {
-				fmt.Fprintf(&b, "%sSelect a location to explore:%s  ", colorGray, colorReset)
+				fmt.Fprintf(&b, "%s选择要探索的位置：%s  ", colorGray, colorReset)
 				fmt.Fprintf(&b, "%s%s%s%s %s\n\n", colorCyan, colorBold, spinnerFrames[m.spinner], colorReset, m.status)
 			}
 		} else {
 			if hasPendingOverviewEntries(m.entries) {
-				fmt.Fprintf(&b, "%sSelect a location to explore:%s  ", colorGray, colorReset)
+				fmt.Fprintf(&b, "%s选择要探索的位置：%s  ", colorGray, colorReset)
 				fmt.Fprintf(&b, "%s%s%s%s %s\n\n", colorCyan, colorBold, spinnerFrames[m.spinner], colorReset, m.status)
 			} else {
-				fmt.Fprintf(&b, "%sSelect a location to explore:%s\n\n", colorGray, colorReset)
+				fmt.Fprintf(&b, "%s选择要探索的位置：%s\n\n", colorGray, colorReset)
 			}
 		}
 	} else {
-		fmt.Fprintf(&b, "%sAnalyze Disk%s  %s%s%s", colorPurpleBold, colorReset, colorGray, displayPath(m.path), colorReset)
+		fmt.Fprintf(&b, "%s分析磁盘%s  %s%s%s", colorPurpleBold, colorReset, colorGray, displayPath(m.path), colorReset)
 		if !m.scanning || m.totalSize > 0 {
-			fmt.Fprintf(&b, "  |  Total: %s", humanizeBytes(m.totalSize))
+			fmt.Fprintf(&b, "  |  总计：%s", humanizeBytes(m.totalSize))
 		}
 		fmt.Fprintf(&b, "\n\n")
 	}
@@ -62,13 +62,13 @@ func (m model) View() string {
 		// "0 items removed" there reads as a stalled delete; say what is happening
 		// instead, and show the tally only once it means something.
 		if count > 0 {
-			fmt.Fprintf(&b, "%s%s%s%s Deleting: %s%s items%s removed, please wait...\n",
+			fmt.Fprintf(&b, "%s%s%s%s 正在删除：%s%s 项%s 已删除，请稍候…\n",
 				colorCyan, colorBold,
 				spinnerFrames[m.spinner],
 				colorReset,
 				colorYellow, formatNumber(count), colorReset)
 		} else {
-			fmt.Fprintf(&b, "%s%s%s%s Deleting: moving to Trash, please wait...\n",
+			fmt.Fprintf(&b, "%s%s%s%s 正在删除：移至废纸篓，请稍候…\n",
 				colorCyan, colorBold,
 				spinnerFrames[m.spinner],
 				colorReset)
@@ -94,7 +94,7 @@ func (m model) View() string {
 			progressPrefix = fmt.Sprintf(" %s%.0f%%%s", colorCyan, percent, colorReset)
 		}
 
-		statusLine := fmt.Sprintf("%s%s%s%s Scanning%s: %s%s files%s, %s%s dirs%s, %s%s%s",
+		statusLine := fmt.Sprintf("%s%s%s%s 正在扫描%s：%s%s 个文件%s，%s%s 个目录%s，%s%s%s",
 			colorCyan, colorBold,
 			spinnerFrames[m.spinner],
 			colorReset,
@@ -133,7 +133,7 @@ func (m model) View() string {
 			return b.String()
 		}
 		if showingCachedView {
-			fmt.Fprintf(&b, "%sShowing cached results while refreshing...%s\n\n", colorGray, colorReset)
+			fmt.Fprintf(&b, "%s刷新时显示缓存结果…%s\n\n", colorGray, colorReset)
 		} else {
 			fmt.Fprintln(&b)
 		}
@@ -145,15 +145,15 @@ func (m model) View() string {
 			if m.largeFiltering {
 				cursor = "▌"
 			}
-			fmt.Fprintf(&b, "  %sFilter:%s %s%s  %s(%d matches)%s\n\n",
+			fmt.Fprintf(&b, "  %s筛选：%s %s%s  %s(%d 个匹配)%s\n\n",
 				colorCyan, colorReset, m.largeFilter, cursor,
 				colorGray, len(m.largeFiles), colorReset)
 		}
 		if len(m.largeFiles) == 0 {
 			if m.largeFilter != "" {
-				fmt.Fprintf(&b, "  No matches for %q\n", m.largeFilter)
+				fmt.Fprintf(&b, "  没有匹配 %q 的项目\n", m.largeFilter)
 			} else {
-				fmt.Fprintln(&b, "  No large files found")
+				fmt.Fprintln(&b, "  未找到大文件")
 			}
 		} else {
 			viewport := calculateViewport(m.height, true)
@@ -198,15 +198,15 @@ func (m model) View() string {
 			if m.entryFiltering {
 				cursor = "▌"
 			}
-			fmt.Fprintf(&b, "  %sFilter:%s %s%s  %s(%d matches)%s\n\n",
+			fmt.Fprintf(&b, "  %s筛选：%s %s%s  %s(%d 个匹配)%s\n\n",
 				colorCyan, colorReset, m.entryFilter, cursor,
 				colorGray, len(m.entries), colorReset)
 		}
 		if len(m.entries) == 0 {
 			if !m.inOverviewMode() && m.entryFilter != "" {
-				fmt.Fprintf(&b, "  No matches for %q\n", m.entryFilter)
+				fmt.Fprintf(&b, "  没有匹配 %q 的项目\n", m.entryFilter)
 			} else {
-				fmt.Fprintln(&b, "  Empty directory")
+				fmt.Fprintln(&b, "  空目录")
 			}
 		} else {
 			if m.inOverviewMode() {
@@ -235,7 +235,7 @@ func (m model) View() string {
 					// animated spinner keeps the row visibly alive, and the
 					// string is exactly 10 display columns, flush with the
 					// right-aligned sizes (a static placeholder read as stuck).
-					sizeText := fmt.Sprintf("%s scanning", spinnerFrames[m.spinner])
+					sizeText := fmt.Sprintf("%s 扫描中", spinnerFrames[m.spinner])
 					sizeColor := colorCyan
 					if sizeVal >= 0 {
 						sizeText = humanizeBytes(sizeVal)
@@ -306,7 +306,7 @@ func (m model) View() string {
 					sizeColor := sizeColorForPercent(percent)
 					size := humanizeBytes(entry.Size)
 					if entry.Size < 0 {
-						size = fmt.Sprintf("%s %s", spinnerFrames[m.spinner], "scanning")
+						size = fmt.Sprintf("%s %s", spinnerFrames[m.spinner], "扫描中")
 						sizeColor = colorCyan
 					}
 
@@ -360,41 +360,41 @@ func (m model) View() string {
 	fmt.Fprintln(&b)
 	if m.inOverviewMode() {
 		if len(m.history) > 0 {
-			fmt.Fprintf(&b, "%s↑↓←→ | Enter | R Refresh | O Open | P Preview | F File | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
+			fmt.Fprintf(&b, "%s↑↓←→ | 回车 | R 刷新 | O 打开 | P 预览 | F 文件 | Esc 返回 | Q/Ctrl+C 退出%s\n", colorGray, colorReset)
 		} else {
-			fmt.Fprintf(&b, "%s↑↓→ | Enter | R Refresh | O Open | P Preview | F File | Esc/Q Quit%s\n", colorGray, colorReset)
+			fmt.Fprintf(&b, "%s↑↓→ | 回车 | R 刷新 | O 打开 | P 预览 | F 文件 | Esc/Q 退出%s\n", colorGray, colorReset)
 		}
 	} else if m.showLargeFiles {
 		if m.largeFiltering {
-			fmt.Fprintf(&b, "%sType to filter  |  Enter Apply  |  Esc Clear  |  Ctrl+C Quit%s\n", colorGray, colorReset)
+			fmt.Fprintf(&b, "%s输入以筛选  |  回车应用  |  Esc 清除  |  Ctrl+C 退出%s\n", colorGray, colorReset)
 		} else if m.largeFilter != "" {
-			fmt.Fprintf(&b, "%s↑↓← | Space Select | / Edit | Esc Clear filter | O Open | P Preview | F File | ⌫ Del | Q Quit%s\n", colorGray, colorReset)
+			fmt.Fprintf(&b, "%s↑↓← | 空格选择 | / 编辑 | Esc 清除筛选 | O 打开 | P 预览 | F 文件 | ⌫ 删除 | Q 退出%s\n", colorGray, colorReset)
 		} else {
 			selectCount := len(m.largeMultiSelected)
 			if selectCount > 0 {
-				fmt.Fprintf(&b, "%s↑↓← | Space Select | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, colorReset)
+				fmt.Fprintf(&b, "%s↑↓← | 空格选择 | / 筛选 | R 刷新 | O 打开 | P 预览 | F 文件 | ⌫ 删除 %d | Esc 返回 | Q/Ctrl+C 退出%s\n", colorGray, selectCount, colorReset)
 			} else {
-				fmt.Fprintf(&b, "%s↑↓← | Space Select | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
+				fmt.Fprintf(&b, "%s↑↓← | 空格选择 | / 筛选 | R 刷新 | O 打开 | P 预览 | F 文件 | ⌫ 删除 | Esc 返回 | Q/Ctrl+C 退出%s\n", colorGray, colorReset)
 			}
 		}
 	} else if m.entryFiltering {
-		fmt.Fprintf(&b, "%sType to filter  |  Enter Apply  |  Esc Clear  |  Ctrl+C Quit%s\n", colorGray, colorReset)
+		fmt.Fprintf(&b, "%s输入以筛选  |  回车应用  |  Esc 清除  |  Ctrl+C 退出%s\n", colorGray, colorReset)
 	} else if m.entryFilter != "" {
-		fmt.Fprintf(&b, "%s↑↓←→ | Enter | Space Select | / Edit | Esc Clear filter | O Open | P Preview | F File | ⌫ Del | Q Quit%s\n", colorGray, colorReset)
+		fmt.Fprintf(&b, "%s↑↓←→ | 回车 | 空格选择 | / 编辑 | Esc 清除筛选 | O 打开 | P 预览 | F 文件 | ⌫ 删除 | Q 退出%s\n", colorGray, colorReset)
 	} else {
 		largeFileCount := len(m.largeFiles)
 		selectCount := len(m.multiSelected)
 		if selectCount > 0 {
 			if largeFileCount > 0 {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | T Top %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, largeFileCount, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | 空格选择 | 回车 | / 筛选 | R 刷新 | O 打开 | P 预览 | F 文件 | ⌫ 删除 %d | T 顶部 %d | Esc 返回 | Q/Ctrl+C 退出%s\n", colorGray, selectCount, largeFileCount, colorReset)
 			} else {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, selectCount, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | 空格选择 | 回车 | / 筛选 | R 刷新 | O 打开 | P 预览 | F 文件 | ⌫ 删除 %d | Esc 返回 | Q/Ctrl+C 退出%s\n", colorGray, selectCount, colorReset)
 			}
 		} else {
 			if largeFileCount > 0 {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del | T Top %d | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, largeFileCount, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | 空格选择 | 回车 | / 筛选 | R 刷新 | O 打开 | P 预览 | F 文件 | ⌫ 删除 | T 顶部 %d | Esc 返回 | Q/Ctrl+C 退出%s\n", colorGray, largeFileCount, colorReset)
 			} else {
-				fmt.Fprintf(&b, "%s↑↓←→ | Space Select | Enter | / Filter | R Refresh | O Open | P Preview | F File | ⌫ Del | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
+				fmt.Fprintf(&b, "%s↑↓←→ | 空格选择 | 回车 | / 筛选 | R 刷新 | O 打开 | P 预览 | F 文件 | ⌫ 删除 | Esc 返回 | Q/Ctrl+C 退出%s\n", colorGray, colorReset)
 			}
 		}
 	}
@@ -425,12 +425,12 @@ func (m model) View() string {
 		}
 
 		if deleteCount > 1 {
-			fmt.Fprintf(&b, "%sDelete:%s %d items, %s  %sPress Enter to confirm  |  ESC cancel%s\n",
+			fmt.Fprintf(&b, "%s删除：%s %d 项，%s  %s按回车确认  |  ESC 取消%s\n",
 				colorRed, colorReset,
 				deleteCount, humanizeBytes(totalDeleteSize),
 				colorGray, colorReset)
 		} else {
-			fmt.Fprintf(&b, "%sDelete:%s %s, %s  %sPress Enter to confirm  |  ESC cancel%s\n",
+			fmt.Fprintf(&b, "%s删除：%s %s，%s  %s按回车确认  |  ESC 取消%s\n",
 				colorRed, colorReset,
 				m.deleteTarget.Name, humanizeBytes(m.deleteTarget.Size),
 				colorGray, colorReset)

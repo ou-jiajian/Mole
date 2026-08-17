@@ -232,13 +232,13 @@ func TestRenderProcessAlertBar(t *testing.T) {
 	}
 
 	bar := renderProcessAlertBar(alerts, 120)
-	if !strings.Contains(bar, "ALERT") {
+	if !strings.Contains(bar, "告警") {
 		t.Fatalf("missing alert prefix: %q", bar)
 	}
 	if !strings.Contains(bar, "node (10)") {
 		t.Fatalf("missing lead process label: %q", bar)
 	}
-	if !strings.Contains(bar, "+1 more") {
+	if !strings.Contains(bar, "+1 更多") {
 		t.Fatalf("missing additional alert count: %q", bar)
 	}
 	if strings.Contains(bar, "terminate") || strings.Contains(bar, "ignore") {

@@ -55,8 +55,8 @@ setup() {
 @test "completion --help shows usage" {
 	run "$PROJECT_ROOT/bin/completion.sh" --help
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"Usage: mole completion"* ]] || return 1
-	[[ "$output" == *"Auto-install"* ]]
+	[[ "$output" == *"用法: mole completion"* ]] || return 1
+	[[ "$output" == *"自动安装"* ]]
 }
 
 @test "completion bash generates valid bash script" {
@@ -114,9 +114,9 @@ setup() {
 @test "completion zsh includes command descriptions" {
 	run "$PROJECT_ROOT/bin/completion.sh" zsh
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"optimize:Refresh caches and services"* ]] || return 1
-	[[ "$output" == *"clean:Free up disk space"* ]] || return 1
-	[[ "$output" == *"history:Review cleanup activity"* ]]
+	[[ "$output" == *"optimize:优化系统性能"* ]] || return 1
+	[[ "$output" == *"clean:清理磁盘空间"* ]] || return 1
+	[[ "$output" == *"history:查看清理记录"* ]]
 }
 
 @test "completion zsh includes current clean, analyze, history, and purge options only" {
@@ -187,13 +187,13 @@ setup() {
 
 	run env SHELL=/bin/zsh "$PROJECT_ROOT/bin/completion.sh"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"updated"* ]]
+	[[ "$output" == *"已更新到"* ]]
 }
 
 @test "completion --dry-run previews changes without writing config" {
 	run env SHELL=/bin/zsh "$PROJECT_ROOT/bin/completion.sh" --dry-run
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"DRY RUN MODE"* ]] || return 1
+	[[ "$output" == *"预览模式"* ]] || return 1
 	[ ! -f "$HOME/.zshrc" ]
 }
 

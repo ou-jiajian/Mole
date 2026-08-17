@@ -166,7 +166,7 @@ func formatProcessLabel(proc ProcessInfo) string {
 	if proc.Name != "" {
 		return fmt.Sprintf("%s (%d)", proc.Name, proc.PID)
 	}
-	return fmt.Sprintf("pid %d", proc.PID)
+	return fmt.Sprintf("PID %d", proc.PID)
 }
 
 func processRanksBefore(a, b ProcessInfo) bool {

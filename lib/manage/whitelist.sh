@@ -47,10 +47,10 @@ save_whitelist_patterns() {
 
     if [[ "$mode" == "optimize" ]]; then
         config_file="$WHITELIST_CONFIG_OPTIMIZE"
-        header_text="# Mole Optimization Whitelist - These checks will be skipped during optimization"
+        header_text="# Mole 优化白名单 - 这些检查将在优化时被跳过"
     else
         config_file="$WHITELIST_CONFIG_CLEAN"
-        header_text="# Mole Whitelist - Protected paths won't be deleted\n# Default protections: Playwright browsers, Ollama models, Surge Mac, R renv, Finder metadata\n# Add one pattern per line to keep items safe."
+        header_text="# Mole 白名单 - 受保护路径不会被删除\n# 默认保护：Playwright 浏览器、Ollama 模型、Surge Mac、R renv、Finder 元数据\n# 每行添加一个模式以保护相应项目。"
     fi
 
     ensure_user_file "$config_file"
@@ -335,14 +335,14 @@ manage_whitelist_categories() {
         items_source=$(get_optimize_whitelist_items)
         active_config_file="$WHITELIST_CONFIG_OPTIMIZE"
         local display_config="${active_config_file/#$HOME/~}"
-        menu_title="Whitelist Manager, Select optimize tasks to ignore
-${GRAY}Edit: ${display_config}${NC}"
+        menu_title="白名单管理，选择要忽略的优化任务
+${GRAY}编辑：${display_config}${NC}"
     else
         items_source=$(get_all_cache_items)
         active_config_file="$WHITELIST_CONFIG_CLEAN"
         local display_config="${active_config_file/#$HOME/~}"
-        menu_title="Whitelist Manager, Select caches to protect
-${GRAY}Edit: ${display_config}${NC}"
+        menu_title="白名单管理，选择要保护的缓存
+${GRAY}编辑：${display_config}${NC}"
     fi
 
     while IFS='|' read -r display_name pattern _; do
@@ -478,14 +478,14 @@ ${GRAY}Edit: ${display_config}${NC}"
 
     local total_protected=$((${#selected_patterns[@]} + ${#custom_patterns[@]}))
     local -a summary_lines=()
-    summary_lines+=("Whitelist Updated")
+    summary_lines+=("白名单已更新")
     if [[ ${#custom_patterns[@]} -gt 0 ]]; then
-        summary_lines+=("Protected ${#selected_patterns[@]} predefined + ${#custom_patterns[@]} custom patterns")
+        summary_lines+=("已保护 ${#selected_patterns[@]} 个预定义 + ${#custom_patterns[@]} 个自定义模式")
     else
-        summary_lines+=("Protected ${total_protected} caches")
+        summary_lines+=("已保护 ${total_protected} 个缓存")
     fi
     local display_config="${active_config_file/#$HOME/~}"
-    summary_lines+=("Config: ${GRAY}${display_config}${NC}")
+    summary_lines+=("配置：${GRAY}${display_config}${NC}")
 
     print_summary_block "${summary_lines[@]}"
     printf '\n'

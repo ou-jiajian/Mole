@@ -31,7 +31,7 @@ execute_optimization system_maintenance
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to verify Spotlight index"* ]] || return 1
+	[[ "$output" == *"无法验证 Spotlight 索引"* ]] || return 1
 }
 
 @test "Spotlight optimization reports a failed status probe" {
@@ -46,7 +46,7 @@ execute_optimization spotlight_index_optimize
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to inspect Spotlight index (exit=124)"* ]] || return 1
+	[[ "$output" == *"无法检查 Spotlight 索引（exit=124）"* ]] || return 1
 }
 
 @test "quarantine cleanup reports a failed row-count probe" {
@@ -66,7 +66,7 @@ execute_optimization quarantine_cleanup
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to inspect quarantine database"* ]] || return 1
+	[[ "$output" == *"无法检查隔离数据库"* ]] || return 1
 }
 
 @test "login item audit reports a failed snapshot" {
@@ -82,7 +82,7 @@ execute_optimization login_items_audit
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to inspect login items"* ]] || return 1
+	[[ "$output" == *"无法检查登录项"* ]] || return 1
 }
 
 @test "notification cleanup reports a failed size probe" {
@@ -101,7 +101,7 @@ execute_optimization notification_cleanup
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to inspect Notification Center database size"* ]] || return 1
+	[[ "$output" == *"无法检查通知中心数据库大小"* ]] || return 1
 }
 
 @test "CoreDuet cleanup reports a failed size probe" {
@@ -119,7 +119,7 @@ execute_optimization coreduet_cleanup
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to inspect Knowledge database size"* ]] || return 1
+	[[ "$output" == *"无法检查 Knowledge 数据库大小"* ]] || return 1
 }
 
 @test "sudo-dependent maintenance is skipped when admin access is denied" {
@@ -136,7 +136,7 @@ execute_optimization network_optimization
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"admin access required"* ]] || return 1
+	[[ "$output" == *"需要管理员权限"* ]] || return 1
 	[[ "$output" != *"UNEXPECTED_MDUTIL"* ]] || return 1
 }
 
@@ -173,7 +173,7 @@ execute_optimization spotlight_index_optimize
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Spotlight speed check failed (2 probe(s))"* ]] || return 1
+	[[ "$output" == *"Spotlight 速度检查失败（2 次探测）"* ]] || return 1
 }
 
 @test "saved state cleanup reports a failed discovery scan" {
@@ -191,7 +191,7 @@ execute_optimization saved_state_cleanup
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to scan old saved states"* ]] || return 1
+	[[ "$output" == *"无法扫描旧的已保存状态"* ]] || return 1
 	[[ "$output" != *"App saved states optimized"* ]] || return 1
 	[[ "$output" != *"Failed to remove"* ]] || return 1
 }
@@ -211,7 +211,7 @@ execute_optimization shared_file_list_repair
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to scan shared file lists"* ]] || return 1
+	[[ "$output" == *"无法扫描共享文件列表"* ]] || return 1
 	[[ "$output" != *"Failed to repair"* ]] || return 1
 }
 
@@ -253,7 +253,7 @@ execute_optimization network_stack_optimize
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Network health check timed out"* ]] || return 1
+	[[ "$output" == *"网络健康检查超时"* ]] || return 1
 	[[ "$output" != *"Network routing table refreshed"* ]] || return 1
 	[[ "$output" != *"UNEXPECTED_SUDO"* ]] || return 1
 }
@@ -273,7 +273,7 @@ echo "survived:$(optimize_outcome_count failed)"
 EOF
 
 	[[ "$status" -eq 0 ]] || { echo "$output"; return 1; }
-	[[ "$output" == *"Failed to inspect active VPN state"* ]] || return 1
+	[[ "$output" == *"无法检查活动 VPN 状态"* ]] || return 1
 	[[ "$output" == *"survived:1"* ]] || return 1
 	[[ "$output" != *"Network routing table refreshed"* ]] || return 1
 	[[ "$output" != *"UNEXPECTED_SUDO"* ]] || return 1

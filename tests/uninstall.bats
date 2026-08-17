@@ -1600,8 +1600,8 @@ output=$(cat "$output_file")
 [[ -d "$HOME/Library/Caches/TestApp" ]] || { echo "WRONG: dry-run removed cache"; cat "$output_file"; exit 1; }
 [[ -f "$HOME/Library/Preferences/com.example.TestApp.plist" ]] || { echo "WRONG: dry-run removed prefs"; cat "$output_file"; exit 1; }
 
-[[ "$output" == *"Uninstall dry run complete"* ]] || { echo "WRONG: missing dry-run summary"; cat "$output_file"; exit 1; }
-[[ "$output" == *"Would remove 1 app"* ]] || { echo "WRONG: missing would-remove summary"; cat "$output_file"; exit 1; }
+[[ "$output" == *"卸载预览完成"* ]] || { echo "WRONG: missing dry-run summary"; cat "$output_file"; exit 1; }
+[[ "$output" == *"将移除 1 个应用"* ]] || { echo "WRONG: missing would-remove summary"; cat "$output_file"; exit 1; }
 [[ "$output" != *"Could not remove"* ]] || { echo "WRONG: dry-run reported expected leftovers"; cat "$output_file"; exit 1; }
 [[ "$output" != *"system-level path"* ]] || { echo "WRONG: dry-run reported post-removal system leftovers"; cat "$output_file"; exit 1; }
 [[ "$output" != *"Uninstall incomplete"* ]] || { echo "WRONG: dry-run marked incomplete"; cat "$output_file"; exit 1; }
@@ -2612,7 +2612,7 @@ printf '\n' | "$PROJECT_ROOT/mole" remove --dry-run
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"DRY RUN MODE"* ]] || return 1
+    [[ "$output" == *"预览模式"* ]] || return 1
     [ -f "$HOME/.local/bin/mole" ]
     [ -f "$HOME/.local/bin/mo" ]
     [ -d "$HOME/.config/mole" ]

@@ -592,7 +592,7 @@ EOF
 
     [ "$status" -eq 0 ]
     [[ -d "$victim" ]] || return 1
-    [[ "$output" == *"App Management, App Data, or Full Disk Access"* ]] || return 1
+    [[ "$output" == *"完全磁盘访问"* ]] || return 1
     [[ "$output" != *"Touch ID"* ]] || return 1
     [[ "$output" == *"RC=14"* ]] || return 1
     [[ ! -s "$trace" ]] || return 1
@@ -665,7 +665,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ -d "$victim" ]] || return 1
     [[ ! -s "$trace" ]] || return 1
-    [[ "$output" == *"refusing permanent delete"* ]]
+    [[ "$output" == *"已拒绝永久删除"* ]]
 }
 
 @test "privacy denial diagnosis recommends terminal privacy access, not Touch ID" {
@@ -897,7 +897,7 @@ EOF
     status_col=$(awk -F'\t' 'END { print $4 }' "$MOLE_DELETE_LOG")
     [ "$mode_col" = "surprise" ]
     [ "$status_col" = "invalid-mode" ]
-    [[ "$output" == *'expected "permanent" or "trash"'* ]]
+    [[ "$output" == *'应为 "permanent" 或 "trash"'* ]]
 }
 
 @test "mole_delete warns once for repeated invalid delete mode" {
@@ -921,7 +921,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ -e "$first" ]] || return 1
     [[ -e "$second" ]] || return 1
-    [[ "$(grep -c 'invalid MOLE_DELETE_MODE' <<< "$output")" -eq 1 ]]
+    [[ "$(grep -c '无效的 MOLE_DELETE_MODE' <<< "$output")" -eq 1 ]]
 }
 
 @test "mole_delete trash failure leaves target in place" {
@@ -949,7 +949,7 @@ EOF
     local status_col
     status_col=$(awk -F'\t' 'END { print $4 }' "$MOLE_DELETE_LOG")
     [ "$status_col" = "trash-failed" ]
-    [[ "$output" == *"refusing permanent delete"* ]]
+    [[ "$output" == *"已拒绝永久删除"* ]]
 }
 
 @test "mole_delete warns once for repeated Trash failures" {
@@ -980,7 +980,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ -e "$first" ]] || return 1
     [[ -e "$second" ]] || return 1
-    [[ "$(grep -c "Trash unavailable" <<< "$output")" -eq 1 ]]
+    [[ "$(grep -c "废纸篓不可用" <<< "$output")" -eq 1 ]]
 }
 
 @test "mole_delete records 'unknown' (not 0) when size measurement fails" {
