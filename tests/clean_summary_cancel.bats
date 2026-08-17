@@ -67,25 +67,25 @@ EOF
     run_perform_cleanup_with 124
 
     [ "$status" -eq 124 ]
-    [[ "$output" == *"Cleanup cancelled"* ]]
-    [[ "$output" == *"timed out (exit 124)"* ]]
-    [[ "$output" == *"Remaining cleanup was skipped"* ]]
+    [[ "$output" == *"清理已取消"* ]]
+    [[ "$output" == *"超时（退出码 124）"* ]]
+    [[ "$output" == *"剩余清理已跳过"* ]]
 }
 
 @test "interrupted section (>=128) prints an interrupted summary" {
     run_perform_cleanup_with 130
 
     [ "$status" -eq 130 ]
-    [[ "$output" == *"Cleanup interrupted"* ]]
-    [[ "$output" == *"was interrupted (exit 130)"* ]]
+    [[ "$output" == *"清理已中断"* ]]
+    [[ "$output" == *"被中断（退出码 130）"* ]]
 }
 
 @test "successful run still prints a complete summary" {
     run_perform_cleanup_with 0
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Cleanup complete"* ]]
-    [[ "$output" != *"Cleanup cancelled"* ]]
+    [[ "$output" == *"清理完成"* ]]
+    [[ "$output" != *"清理已取消"* ]]
 }
 
 @test "run with removal timeouts completes and reports them (#1384)" {
@@ -111,9 +111,9 @@ perform_cleanup
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Cleanup complete"* ]]
-    [[ "$output" != *"Cleanup cancelled"* ]]
-    [[ "$output" == *"3 item(s) exceeded the 30s removal budget"* ]]
+    [[ "$output" == *"清理完成"* ]]
+    [[ "$output" != *"清理已取消"* ]]
+    [[ "$output" == *"3 个项目超过了 30 秒的移除预算"* ]]
 }
 
 @test "sizing timeouts still clean and the summary reports the under-count (#1374)" {
@@ -151,9 +151,9 @@ EOF
         echo "$output"
         return 1
     }
-    [[ "$output" == *"Cleanup complete"* ]] || return 1
-    [[ "$output" != *"Cleanup cancelled"* ]] || return 1
-    [[ "$output" == *"size-check budget"* ]] || return 1
-    [[ "$output" == *"under-reported"* ]] || return 1
+    [[ "$output" == *"清理完成"* ]] || return 1
+    [[ "$output" != *"清理已取消"* ]] || return 1
+    [[ "$output" == *"大小检查预算"* ]] || return 1
+    [[ "$output" == *"总数被低估"* ]] || return 1
     [[ ! -e "$HOME/Library/Caches/cache1374" ]]
 }

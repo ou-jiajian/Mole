@@ -89,7 +89,7 @@ test -x "$CONFIG_DIR/bin/analyze-go"
 EOF
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"SUCCESS:Installed analyze"* ]]
+	[[ "$output" == *"SUCCESS:已安装 analyze"* ]]
 }
 
 @test "download_binary retries transient asset and checksum failures" {
@@ -155,7 +155,7 @@ grep -qx "$content" "$CONFIG_DIR/bin/analyze-go"
 EOF
 
 	[ "$status" -eq 0 ] || return 1
-	[[ "$output" == *"SUCCESS:Installed analyze"* ]]
+	[[ "$output" == *"SUCCESS:已安装 analyze"* ]]
 }
 
 @test "download_binary aborts on checksum mismatch without downgrading to a source build" {
@@ -223,7 +223,7 @@ EOF
 	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
 	[[ "$output" != *"TAMPERED_INSTALLED"* ]] || return 1
 	[[ "$output" != *"SOURCE_INSTALLED"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]]
+	[[ "$output" == *"中止安装，而非回退到未验证的构建"* ]]
 }
 
 @test "download_binary preserves the installed helper when verification and rebuild fail (#1193)" {
@@ -339,7 +339,7 @@ EOF
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
 	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]]
+	[[ "$output" == *"中止安装，而非回退到未验证的构建"* ]]
 }
 
 @test "download_binary aborts when SHA256SUMS cannot be downloaded" {
@@ -397,7 +397,7 @@ EOF
 	[ "$status" -eq 0 ]
 	[[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
 	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]]
+	[[ "$output" == *"中止安装，而非回退到未验证的构建"* ]]
 }
 
 @test "download_binary verifies fallback release asset against fallback checksums" {
@@ -448,7 +448,7 @@ grep -q "fallback-binary" "$CONFIG_DIR/bin/status-go"
 EOF
 
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"SUCCESS:Installed status from V1.2.2"* ]]
+	[[ "$output" == *"SUCCESS:已从 V1.2.2 安装 status"* ]]
 }
 
 @test "download_binary aborts on fallback-tag checksum mismatch without a source build" {
@@ -513,7 +513,7 @@ EOF
 	[[ "$output" != *"SOURCE_BUILD_INVOKED"* ]] || return 1
 	[[ "$output" != *"UNEXPECTED_SUCCESS"* ]] || return 1
 	[[ "$output" != *"BINARY_INSTALLED_ANYWAY"* ]] || return 1
-	[[ "$output" == *"aborting instead of falling back"* ]] || return 1
+	[[ "$output" == *"中止安装，而非回退到未验证的构建"* ]] || return 1
 }
 
 @test "install_files fails closed when sudo is unavailable, even under || caller (#update-incident)" {
@@ -561,7 +561,7 @@ EOF
 	[ "$status" -eq 0 ] || return 1
 	[[ "$output" == *"HANDLED_FAILURE"* ]] || return 1
 	[[ "$output" == *"sudo -v && mo update"* ]] || return 1
-	[[ "$output" != *"SUCCESS:Installed mole"* ]] || return 1
+	[[ "$output" != *"SUCCESS:已安装 mole"* ]] || return 1
 	[[ "$output" != *"DOWNLOAD_CALLED"* ]] || return 1
 }
 
@@ -596,7 +596,7 @@ EOF
 	# verify_installation exits 1 on the mixed-version state.
 	[ "$status" -eq 1 ] || return 1
 	[[ "$output" != *"UNEXPECTED_PASS"* ]] || return 1
-	[[ "$output" == *"was not replaced"* ]] || return 1
+	[[ "$output" == *"未被替换"* ]] || return 1
 	[[ "$output" == *"1.45.0"* && "$output" == *"1.47.0"* ]] || return 1
 }
 

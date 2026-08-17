@@ -372,7 +372,7 @@ clean_github_cli_cache
 EOF
 
     [ "$status" -eq 0 ] || { echo "$output"; return 1; }
-    [[ "$output" == *"GitHub CLI cache · skipped (whitelist)"* ]] || return 1
+    [[ "$output" == *"GitHub CLI 缓存 · 已跳过（白名单）"* ]] || return 1
     [ ! -e "$trace" ] || return 1
 }
 

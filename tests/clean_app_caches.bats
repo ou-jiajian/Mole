@@ -67,8 +67,8 @@ EOF
     [ "$status" -eq 0 ]
     # Xcode cache and build products are positive controls proving the cleanup
     # body ran; diagnostics and downloaded documentation must stay review-only.
-    [[ "$output" == *"Xcode cache"* ]] || return 1
-    [[ "$output" == *"Xcode build products"* ]] || return 1
+    [[ "$output" == *"Xcode 缓存"* ]] || return 1
+    [[ "$output" == *"Xcode 构建产物"* ]] || return 1
     [[ "$output" != *"iOS device logs"* ]] || return 1
     [[ "$output" != *"watchOS device logs"* ]] || return 1
     [[ "$output" != *"Xcode documentation cache"* ]] || return 1
@@ -164,7 +164,7 @@ EOF
         echo "$output"
         return 1
     }
-    [[ "$output" == *"CLEAN:Autodesk cache"* ]] || return 1
+    [[ "$output" == *"CLEAN:Autodesk 缓存"* ]] || return 1
 }
 
 @test "clean_xcode_tools does not defer empty Xcode and Simulator roots" {
@@ -348,8 +348,8 @@ clean_media_players
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" != *"CLEAN:Spotify cache"* ]] || return 1
-    [[ "$output" == *"Spotify cache protected"* ]]
+    [[ "$output" != *"CLEAN:Spotify 缓存"* ]] || return 1
+    [[ "$output" == *"Spotify 缓存受保护"* ]]
 }
 
 @test "clean_media_players cleans spotify cache when bnk is empty" {
@@ -364,8 +364,8 @@ clean_media_players
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" != *"Spotify cache protected"* ]] || return 1
-    [[ "$output" == *"CLEAN:Spotify cache"* ]]
+    [[ "$output" != *"Spotify 缓存受保护"* ]] || return 1
+    [[ "$output" == *"CLEAN:Spotify 缓存"* ]]
 }
 
 @test "clean_user_gui_applications calls all sections" {
@@ -421,7 +421,7 @@ EOF
     [ "$status" -eq 0 ]
     [[ "$output" == *"CLEAN:$HOME/Movies/Project.fcpbundle/Event/Render Files/High Quality Media"* ]] || return 1
     [[ "$output" == *"CLEAN:$HOME/Movies/Project.fcpbundle/Event/Transcoded Media/Proxy Media"* ]] || return 1
-    [[ "$output" == *"CLEAN:Final Cut Pro generated cache"* ]] || return 1
+    [[ "$output" == *"CLEAN:Final Cut Pro 生成缓存"* ]] || return 1
     [[ "$output" != *"Transcoded Media/High Quality Media"* ]] || return 1
     [[ "$output" != *"Analysis Files"* ]] || return 1
     [[ "$output" != *"Original Media"* ]] || return 1
@@ -525,7 +525,7 @@ EOF
         echo "$output"
         return 1
     }
-    [[ "$output" == *"Final Cut Pro generated caches · skipped (process state unknown)"* ]] || return 1
+    [[ "$output" == *"Final Cut Pro 生成缓存 · 已跳过（process state unknown）"* ]] || return 1
     [[ "$output" != *"UNEXPECTED_SAFE_CLEAN"* ]]
 }
 
@@ -568,7 +568,7 @@ EOF
     [[ "$output" == *"CLEAN:$HOME/Movies/JianyingPro/User Data/Cache/frameThumbnail"* ]] || return 1
     [[ "$output" == *"CLEAN:$HOME/Movies/JianyingPro/User Data/Cache/audioWave"* ]] || return 1
     [[ "$output" == *"CLEAN:$HOME/Movies/JianyingPro/User Data/Cache/AlgorithmCache"* ]] || return 1
-    [[ "$output" == *"CLEAN:JianyingPro generated cache"* ]] || return 1
+    [[ "$output" == *"CLEAN:JianyingPro 生成缓存"* ]] || return 1
     [[ "$output" != *"Cache/effect"* ]] || return 1
     [[ "$output" != *"Cache/music"* ]] || return 1
     [[ "$output" != *"Cache/image"* ]] || return 1
@@ -640,7 +640,7 @@ clean_jianying_pro_generated_caches
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"JianyingPro generated caches · skipped (JianyingPro running)"* ]] || return 1
+    [[ "$output" == *"JianyingPro 生成缓存 · 已跳过（JianyingPro running）"* ]] || return 1
     [[ "$output" != *"unexpected safe_clean"* ]] || return 1
 }
 
@@ -661,7 +661,7 @@ clean_jianying_pro_generated_caches
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"skipped (process state unknown)"* ]] || return 1
+    [[ "$output" == *"已跳过（process state unknown）"* ]] || return 1
     [[ "$output" != *"unexpected safe_clean"* ]] || return 1
 }
 
@@ -717,10 +717,10 @@ clean_ai_apps
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"ChatGPT cache"* ]] || return 1
-    [[ "$output" == *"Claude desktop cache"* ]] || return 1
-    [[ "$output" == *"Google Clearcut logs"* ]] || return 1
-    [[ "$output" == *"LM Studio cache"* ]] || return 1
+    [[ "$output" == *"ChatGPT 缓存"* ]] || return 1
+    [[ "$output" == *"Claude 桌面版缓存"* ]] || return 1
+    [[ "$output" == *"Google Clearcut 日志"* ]] || return 1
+    [[ "$output" == *"LM Studio 缓存"* ]] || return 1
     [[ "$output" != *"Codex"* ]]
 }
 
@@ -775,8 +775,8 @@ clean_design_tools
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Sketch cache"* ]] || return 1
-    [[ "$output" == *"Figma cache"* ]]
+    [[ "$output" == *"Sketch 缓存"* ]] || return 1
+    [[ "$output" == *"Figma 缓存"* ]]
 }
 
 @test "clean_dingtalk calls expected caches" {
@@ -789,8 +789,8 @@ clean_dingtalk
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"DingTalk iDingTalk cache"* ]] || return 1
-    [[ "$output" == *"DingTalk logs"* ]]
+    [[ "$output" == *"钉钉 iDingTalk 缓存"* ]] || return 1
+    [[ "$output" == *"钉钉日志"* ]]
 }
 
 @test "clean_download_managers calls expected caches" {
@@ -802,8 +802,8 @@ clean_download_managers
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Aria2 cache"* ]] || return 1
-    [[ "$output" == *"qBittorrent cache"* ]]
+    [[ "$output" == *"Aria2 缓存"* ]] || return 1
+    [[ "$output" == *"qBittorrent 缓存"* ]]
 }
 
 @test "clean_productivity_apps calls expected caches" {
@@ -815,8 +815,8 @@ clean_productivity_apps
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"MiaoYan cache"* ]] || return 1
-    [[ "$output" == *"Flomo cache"* ]]
+    [[ "$output" == *"妙言缓存"* ]] || return 1
+    [[ "$output" == *"flomo 缓存"* ]]
 }
 
 @test "clean_screenshot_tools calls expected caches" {
@@ -828,8 +828,8 @@ clean_screenshot_tools
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"CleanShot cache"* ]] || return 1
-    [[ "$output" == *"Xnip cache"* ]]
+    [[ "$output" == *"CleanShot 缓存"* ]] || return 1
+    [[ "$output" == *"Xnip 缓存"* ]]
 }
 
 @test "clean_office_applications calls expected caches" {
@@ -842,8 +842,8 @@ clean_office_applications
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Microsoft Word cache"* ]] || return 1
-    [[ "$output" == *"Apple iWork cache"* ]]
+    [[ "$output" == *"Microsoft Word 缓存"* ]] || return 1
+    [[ "$output" == *"Apple iWork 缓存"* ]]
 }
 
 @test "clean_communication_apps includes Microsoft Teams legacy caches" {
@@ -856,8 +856,8 @@ clean_communication_apps
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Microsoft Teams legacy cache"* ]] || return 1
-    [[ "$output" == *"Microsoft Teams legacy logs"* ]]
+    [[ "$output" == *"Microsoft Teams 旧版缓存"* ]] || return 1
+    [[ "$output" == *"Microsoft Teams 旧版日志"* ]]
 }
 
 @test "clean_gaming_platforms includes steam and minecraft related caches" {
@@ -872,10 +872,10 @@ clean_gaming_platforms
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Steam app cache"* ]] || return 1
-    [[ "$output" == *"Steam shader cache"* ]] || return 1
-    [[ "$output" == *"Minecraft logs"* ]] || return 1
-    [[ "$output" == *"Lunar Client logs"* ]]
+    [[ "$output" == *"Steam 应用缓存"* ]] || return 1
+    [[ "$output" == *"Steam 着色器缓存"* ]] || return 1
+    [[ "$output" == *"Minecraft 日志"* ]] || return 1
+    [[ "$output" == *"Lunar Client 日志"* ]]
 }
 
 @test "clean_code_editors includes Zed caches" {
@@ -893,12 +893,12 @@ clean_code_editors
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Zed cache"* ]] || return 1
-    [[ "$output" == *"CLEAN:$HOME/Library/Application Support/Zed/node/cache/_cacache|Zed npm cache"* ]] || return 1
-    [[ "$output" == *"CLEAN:$HOME/Library/Application Support/Zed/node/node-v24.11.0-darwin-arm64/cache/_cacache|Zed npm cache"* ]] || return 1
+    [[ "$output" == *"Zed 缓存"* ]] || return 1
+    [[ "$output" == *"CLEAN:$HOME/Library/Application Support/Zed/node/cache/_cacache|Zed npm 缓存"* ]] || return 1
+    [[ "$output" == *"CLEAN:$HOME/Library/Application Support/Zed/node/node-v24.11.0-darwin-arm64/cache/_cacache|Zed npm 缓存"* ]] || return 1
     [[ "$output" != *"$HOME/Library/Application Support/Zed/db"* ]] || return 1
     [[ "$output" != *"node-v24.11.0-darwin-arm64/bin"* ]] || return 1
-    [[ "$output" == *"Zed logs"* ]] || return 1
+    [[ "$output" == *"Zed 日志"* ]] || return 1
 }
 
 @test "clean_code_editors includes VS Code WebStorage CacheStorage only" {
@@ -915,7 +915,7 @@ clean_code_editors
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"CLEAN:$HOME/Library/Application Support/Code/WebStorage/29/CacheStorage/uuid-1|VS Code webview cache"* ]] || return 1
+    [[ "$output" == *"CLEAN:$HOME/Library/Application Support/Code/WebStorage/29/CacheStorage/uuid-1|VS Code WebView 缓存"* ]] || return 1
     [[ "$output" != *"Local Storage"* ]] || return 1
     [[ "$output" != *"QuotaManager"* ]]
 }
@@ -930,10 +930,10 @@ clean_shell_utils
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Warp cache"* ]] || return 1
-    [[ "$output" == *"Warp log"* ]] || return 1
-    [[ "$output" == *"Warp Sentry crash reports"* ]] || return 1
-    [[ "$output" == *"Ghostty cache"* ]]
+    [[ "$output" == *"Warp 缓存"* ]] || return 1
+    [[ "$output" == *"Warp 日志"* ]] || return 1
+    [[ "$output" == *"Warp Sentry 崩溃报告"* ]] || return 1
+    [[ "$output" == *"Ghostty 缓存"* ]]
 }
 
 @test "clean_video_players includes Stremio caches" {
@@ -947,8 +947,8 @@ clean_video_players
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Stremio cache"* ]] || return 1
-    [[ "$output" == *"Stremio server cache"* ]]
+    [[ "$output" == *"Stremio 缓存"* ]] || return 1
+    [[ "$output" == *"Stremio 服务器缓存"* ]]
 }
 
 @test "clean_video_players cleans SenPlayer videoCache but not sibling data (#1070)" {
@@ -1054,8 +1054,8 @@ clean_code_editors
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"CodeBuddy Extension cache"* ]] || return 1
-    [[ "$output" == *"CodeBuddy Extension logs"* ]]
+    [[ "$output" == *"CodeBuddy Extension 缓存"* ]] || return 1
+    [[ "$output" == *"CodeBuddy Extension 日志"* ]]
 }
 
 @test "clean_code_editors includes CodeBuddy CN caches when directory exists" {
@@ -1070,9 +1070,9 @@ clean_code_editors
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"CodeBuddy CN cache"* ]] || return 1
-    [[ "$output" == *"CodeBuddy CN logs"* ]] || return 1
-    [[ "$output" == *"CodeBuddy CN GPU cache"* ]]
+    [[ "$output" == *"CodeBuddy CN 缓存"* ]] || return 1
+    [[ "$output" == *"CodeBuddy CN 日志"* ]] || return 1
+    [[ "$output" == *"CodeBuddy CN GPU 缓存"* ]]
 }
 
 @test "clean_code_editors skips CodeBuddy when directories are absent" {
@@ -1102,10 +1102,10 @@ clean_media_players
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"QQ Music Mac cache"* ]] || return 1
-    [[ "$output" == *"QQ Music streaming cache"* ]] || return 1
-    [[ "$output" == *"QQ Music logs"* ]] || return 1
-    [[ "$output" == *"QQ Music container cache"* ]]
+    [[ "$output" == *"QQ 音乐 Mac 缓存"* ]] || return 1
+    [[ "$output" == *"QQ 音乐流媒体缓存"* ]] || return 1
+    [[ "$output" == *"QQ 音乐日志"* ]] || return 1
+    [[ "$output" == *"QQ 音乐容器缓存"* ]]
 }
 
 @test "clean_media_players does not reference iDownloadProxy" {
@@ -1135,9 +1135,9 @@ clean_video_players
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Tencent Video old installer"* ]] || return 1
-    [[ "$output" == *"Tencent Video native cache"* ]] || return 1
-    [[ "$output" == *"Tencent Video document cache"* ]]
+    [[ "$output" == *"腾讯视频旧安装包"* ]] || return 1
+    [[ "$output" == *"腾讯视频原生缓存"* ]] || return 1
+    [[ "$output" == *"腾讯视频文档缓存"* ]]
 }
 
 @test "clean_productivity_apps includes Spacedrive thumbnail cache" {
@@ -1150,7 +1150,7 @@ clean_productivity_apps
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"Spacedrive thumbnail cache"* ]]
+    [[ "$output" == *"Spacedrive 缩略图缓存"* ]]
 }
 
 @test "clean_neatdm_stale_segments removes segments older than threshold" {
@@ -1173,8 +1173,8 @@ clean_neatdm_stale_segments
 EOF
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"NeatDM stale downloads"* ]] || return 1
-    [[ "$output" == *"1 items"* ]]
+    [[ "$output" == *"NeatDM 过期下载"* ]] || return 1
+    [[ "$output" == *"1 个项目"* ]]
 }
 
 @test "clean_neatdm_stale_segments skips recent segments" {
@@ -1346,7 +1346,7 @@ clean_3d_tools
 INNER
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"SAFE_CLEAN:Autodesk cache"* ]] || return 1
+    [[ "$output" == *"SAFE_CLEAN:Autodesk 缓存"* ]] || return 1
     [[ "$output" == *"PATH:"*"com.autodesk.AcCoreConsole"* ]] || return 1
 }
 
